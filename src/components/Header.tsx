@@ -1,15 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Briefcase, Plus, LayoutDashboard } from 'lucide-react';
+import { Briefcase, Plus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export function Header() {
   const location = useLocation();
-
-  const navItems = [
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/new', label: 'New Application', icon: Plus },
-  ];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -25,27 +20,28 @@ export function Header() {
           </Link>
 
           <nav className="flex items-center gap-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.to;
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.to}
-                  asChild
-                  variant={isActive ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className={cn(
-                    'gap-2',
-                    isActive && 'bg-secondary text-foreground'
-                  )}
-                >
-                  <Link to={item.to}>
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                </Button>
-              );
-            })}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              Upload My Resume
+            </Button>
+            <Button
+              asChild
+              variant={location.pathname === '/new' ? 'secondary' : 'ghost'}
+              size="sm"
+              className={cn(
+                'gap-2',
+                location.pathname === '/new' && 'bg-secondary text-foreground'
+              )}
+            >
+              <Link to="/new">
+                <Plus className="h-4 w-4" />
+                New Application
+              </Link>
+            </Button>
           </nav>
         </div>
       </div>

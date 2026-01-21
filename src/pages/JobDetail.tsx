@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, RefreshCw, Building2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { MatchScoreBadge } from '@/components/MatchScoreBadge';
-import { getApplication, regenerateContent } from '@/lib/api';
+import { getApplication, regenerateContent, updateApplication } from '@/lib/api';
 import { JobApplication } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -45,6 +47,25 @@ export default function JobDetail() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAppliedChange = async (checked: boolean) => {
+    if (!id || !application) return;
+    
+    try {
+      await updateApplication(id, { applied: checked });
+      setApplication(prev => prev ? { ...prev, applied: checked } : null);
+      toast({
+        title: checked ? 'Marked as Applied' : 'Marked as Not Applied',
+        description: 'Application status updated',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update application',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -141,23 +162,35 @@ export default function JobDetail() {
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={handleRegenerate}
-              disabled={isRegenerating}
-            >
-              {isRegenerating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
-              )}
-              Regenerate
-            </Button>
-            <Button onClick={handleDownloadPdf}>
-              <Download className="mr-2 h-4 w-4" />
-              Download PDF
-            </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Checkbox 
+                id="applied" 
+                checked={application.applied}
+                onCheckedChange={handleAppliedChange}
+              />
+              <Label htmlFor="applied" className="text-sm font-medium cursor-pointer">
+                Applied
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={handleRegenerate}
+                disabled={isRegenerating}
+              >
+                {isRegenerating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Regenerate
+              </Button>
+              <Button onClick={handleDownloadPdf}>
+                <Download className="mr-2 h-4 w-4" />
+                Download PDF
+              </Button>
+            </div>
           </div>
         </div>
       </div>

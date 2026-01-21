@@ -60,6 +60,7 @@ I am particularly drawn to Google's commitment to building products that impact 
 Best regards,
 John Doe`,
     status: 'analyzed',
+    applied: true,
   },
   {
     id: '2',
@@ -71,6 +72,7 @@ John Doe`,
     tailoredResume: '# Resume for Meta...',
     coverLetter: 'Dear Hiring Manager...',
     status: 'applied',
+    applied: true,
   },
   {
     id: '3',
@@ -82,6 +84,7 @@ John Doe`,
     tailoredResume: '# Resume for Stripe...',
     coverLetter: 'Dear Hiring Manager...',
     status: 'interview',
+    applied: false,
   },
   {
     id: '4',
@@ -91,6 +94,7 @@ John Doe`,
     matchScore: 45,
     jobDescription: 'Entry level position for web development...',
     status: 'pending',
+    applied: false,
   },
   {
     id: '5',
@@ -102,6 +106,7 @@ John Doe`,
     tailoredResume: '# Resume for Amazon...',
     coverLetter: 'Dear Hiring Manager...',
     status: 'analyzed',
+    applied: false,
   },
 ];
 
@@ -117,6 +122,16 @@ export async function getApplications(): Promise<JobApplication[]> {
 export async function getApplication(id: string): Promise<JobApplication | undefined> {
   await delay(300);
   return mockApplications.find(app => app.id === id);
+}
+
+export async function updateApplication(id: string, updates: Partial<JobApplication>): Promise<JobApplication | undefined> {
+  await delay(200);
+  const index = mockApplications.findIndex(app => app.id === id);
+  if (index > -1) {
+    mockApplications[index] = { ...mockApplications[index], ...updates };
+    return mockApplications[index];
+  }
+  return undefined;
 }
 
 export async function analyzeJobUrl(url: string): Promise<AnalyzeJobResponse> {
@@ -183,6 +198,7 @@ export async function saveApplication(application: Partial<JobApplication>): Pro
     coverLetter: application.coverLetter,
     jobUrl: application.jobUrl,
     status: 'analyzed',
+    applied: false,
   };
   mockApplications.unshift(newApp);
   return newApp;
