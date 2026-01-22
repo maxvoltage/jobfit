@@ -1,6 +1,6 @@
 import pytest
 import io
-from pathlib import Path
+import os
 from unittest.mock import AsyncMock, patch, MagicMock
 from tools import extract_text_from_pdf, scrape_job_description
 import httpx
@@ -10,19 +10,22 @@ class TestExtractTextFromPDF:
     """Unit tests for PDF text extraction logic."""
 
     def test_handles_extraction_exception(self):
-        """Verify error handling when MarkItDown fails."""
-        with patch('tools.md_converter.convert_stream') as mock_convert:
+        """Verify error handling when MarkItDown and fallback fail."""
+        with patch('tools.md_converter.convert') as mock_convert:
             mock_convert.side_effect = ValueError("Unsupported PDF version")
             
-            result = extract_text_from_pdf(b"fake pdf")
-            
-            # Test our error handling logic
-            assert result.startswith("Error:")
-            assert "Unsupported PDF version" in result
+            with patch('tools.fitz.open') as mock_fitz:
+                mock_fitz.side_effect = Exception("Fitz failed")
+                
+                result = extract_text_from_pdf(b"fake pdf")
+                
+                # Test our error handling logic
+                assert result.startswith("Error:")
+                assert "extract text" in result.lower()
 
     def test_returns_markdown_from_converter(self):
         """Verify we correctly extract the markdown attribute."""
-        with patch('tools.md_converter.convert_stream') as mock_convert:
+        with patch('tools.md_converter.convert') as mock_convert:
             mock_result = MagicMock()
             mock_result.markdown = "# Test Content"
             mock_convert.return_value = mock_result
@@ -32,6 +35,23 @@ class TestExtractTextFromPDF:
             # Test we're accessing the right attribute
             assert result == "# Test Content"
             assert not result.startswith("Error:")
+
+    def test_fallback_to_fitz(self):
+        """Verify fallback to PyMuPDF (fitz) when MarkItDown fails."""
+        with patch('tools.md_converter.convert') as mock_convert:
+            mock_convert.side_effect = Exception("MarkItDown failed")
+            
+            with patch('tools.fitz.open') as mock_fitz:
+                mock_doc = MagicMock()
+                mock_page = MagicMock()
+                mock_page.get_text.return_value = "Fitz text"
+                mock_doc.__iter__.return_value = [mock_page]
+                mock_fitz.return_value = mock_doc
+                
+                result = extract_text_from_pdf(b"fake pdf")
+                
+                assert result == "Fitz text"
+                assert mock_fitz.called
 
 
 class TestScrapeJobDescription:
@@ -152,13 +172,12 @@ startxref
         
         result = extract_text_from_pdf(minimal_pdf)
         
-        # Real test: Did MarkItDown actually extract the text content?
+        # Real test: Did extraction actually extract the text content?
         assert not result.startswith("Error:"), f"Extraction failed: {result}"
         
         # Verify the actual content we put in the PDF was extracted
-        # Note: PDF extraction may add newlines between characters
         result_normalized = result.replace('\n', '').replace(' ', '')
         assert "HelloWorld" in result_normalized, f"Expected 'HelloWorld' in extracted text, got: {result}"
         
-        # MarkItDown should return non-empty markdown
+        # Should return non-empty text
         assert len(result.strip()) > 0

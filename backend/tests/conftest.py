@@ -114,6 +114,7 @@ def sample_job(db_session: Session, sample_resume):
         title="Software Engineer",
         original_jd="Job description here",
         tailored_resume="<h1>Tailored Resume</h1>",
+        cover_letter="<p>Cover Letter Content</p>",
         match_score=85,
         status=JobStatus.todo
     )

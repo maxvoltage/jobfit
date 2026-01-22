@@ -41,7 +41,7 @@ class TestResumeUpload:
             data = response.json()
             assert data["name"] == "resume"
             assert "preview" in data
-            assert data["is_master"] is False
+            assert data["is_master"] is True
             assert "id" in data
     
     def test_upload_non_pdf_file(self, client):
@@ -77,6 +77,8 @@ class TestAnalyzeJob:
             match_score=85,
             tailored_resume_html="<h1>Tailored Resume</h1>",
             cover_letter_html="<p>Cover letter</p>",
+            company_name="Test Company",
+            job_title="Software Engineer",
             key_improvements=["Added Python skills", "Emphasized leadership"]
         )
         
@@ -190,6 +192,7 @@ class TestGeneratePDF:
             title="Engineer",
             original_jd="JD",
             tailored_resume="",  # Empty content
+            cover_letter="",
             match_score=90,
             status=JobStatus.todo
         )

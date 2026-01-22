@@ -16,22 +16,48 @@ export default function UploadResume() {
     const [name, setName] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const selectedFile = e.target.files[0];
-            if (selectedFile.type !== 'application/pdf') {
-                toast({
-                    title: 'Invalid file type',
-                    description: 'Please upload a PDF file',
-                    variant: 'destructive',
-                });
-                return;
-            }
-            setFile(selectedFile);
-            if (!name) {
-                setName(selectedFile.name.replace('.pdf', ''));
-            }
+            handleSelectedFile(e.target.files[0]);
+        }
+    };
+
+    const handleSelectedFile = (selectedFile: File) => {
+        if (selectedFile.type !== 'application/pdf') {
+            toast({
+                title: 'Invalid file type',
+                description: 'Please upload a PDF file',
+                variant: 'destructive',
+            });
+            return;
+        }
+        setFile(selectedFile);
+        if (!name) {
+            setName(selectedFile.name.replace('.pdf', ''));
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleSelectedFile(e.dataTransfer.files[0]);
         }
     };
 
@@ -116,9 +142,13 @@ export default function UploadResume() {
                                 <div
                                     className={cn(
                                         "relative border-2 border-dashed rounded-xl p-10 transition-all flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-primary/50 hover:bg-primary/5",
-                                        file ? "border-primary bg-primary/5" : "border-muted"
+                                        file ? "border-primary bg-primary/5" : "border-muted",
+                                        isDragging && "border-primary bg-primary/10 scale-[1.02]"
                                     )}
                                     onClick={() => document.getElementById('resume-upload')?.click()}
+                                    onDragOver={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
                                 >
                                     <input
                                         id="resume-upload"
