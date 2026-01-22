@@ -80,4 +80,25 @@ describe('NewApplication Auto-save and Redirect', () => {
             expect(mockNavigate).toHaveBeenCalledWith('/job/123');
         });
     });
+
+    it('should default to master resume even if it is not the first one', async () => {
+        const resumes = [
+            { id: 1, name: 'Old CV', is_master: false },
+            { id: 2, name: 'Latest Master CV', is_master: true },
+            { id: 3, name: 'Draft CV', is_master: false }
+        ];
+        vi.mocked(api.getResumes).mockResolvedValue(resumes);
+
+        render(
+            <BrowserRouter>
+                <NewApplication />
+            </BrowserRouter>
+        );
+
+        // Wait for resumes to load and check selected value in trigger
+        await waitFor(() => {
+            const trigger = screen.getByRole('combobox');
+            expect(trigger.textContent).toContain('Latest Master CV');
+        });
+    });
 });

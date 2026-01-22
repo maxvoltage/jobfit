@@ -34,7 +34,8 @@ export default function NewApplication() {
         const data = await getResumes();
         setResumes(data);
         if (data.length > 0) {
-          setSelectedResumeId(data[0].id.toString());
+          const master = data.find(r => r.is_master) || data[0];
+          setSelectedResumeId(master.id.toString());
         }
       } catch (error) {
         console.error('Failed to fetch resumes:', error);

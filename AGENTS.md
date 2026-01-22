@@ -105,3 +105,7 @@ Build a local-first AI agent that helps users tailor their resumes to specific j
         - saving massive amounts of bandwidth -> saving bandwidth
         - powerful tools -> tools
     - No need to use analogies or metaphors unless asked to.
+
+    # COMMIT MESSAGES
+    - never use quatations (", ', `) as they cause issue with git commit -m ""
+    

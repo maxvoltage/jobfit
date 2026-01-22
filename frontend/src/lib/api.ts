@@ -146,6 +146,27 @@ export async function uploadResume(file: File, name?: string): Promise<Resume> {
   };
 }
 
+export async function importResumeFromUrl(url: string, name?: string): Promise<Resume> {
+  const response = await fetch(`${API_BASE_URL}/resumes/import-url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, name }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to import resume');
+  }
+
+  const data = await response.json();
+  return {
+    id: data.id,
+    name: data.name,
+    content: data.preview,
+    is_master: data.is_master,
+  };
+}
+
 export async function getResumes(): Promise<Resume[]> {
   const response = await fetch(`${API_BASE_URL}/resumes`);
   if (!response.ok) throw new Error('Failed to fetch resumes');

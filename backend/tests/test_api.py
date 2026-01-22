@@ -65,6 +65,20 @@ class TestResumeUpload:
             assert response.status_code == 400
             assert "Error" in response.json()["detail"]
 
+    def test_import_resume_from_url(self, client):
+        """Test importing a resume from a URL."""
+        with patch('main.scrape_job_description', new_callable=AsyncMock) as mock_scrape:
+            mock_scrape.return_value = "# Imported Resume Content"
+            
+            payload = {"url": "https://linkedin.com/in/test", "name": "LinkedIn Bio"}
+            response = client.post("/api/resumes/import-url", json=payload)
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["name"] == "LinkedIn Bio"
+            assert data["is_master"] is True
+            assert "# Imported" in data["preview"]
+
 
 class TestAnalyzeJob:
     """Test job analysis endpoint."""

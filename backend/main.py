@@ -10,7 +10,7 @@ from typing import List
 from database import engine, Base, get_db
 import models
 import config
-from tools import extract_text_from_pdf
+from tools import extract_text_from_pdf, scrape_job_description
 from agent import resume_agent, resume_agent_no_tools
 
 # Create database tables
@@ -42,6 +42,10 @@ class ResumeResponse(BaseModel):
     name: str
     preview: str
     is_master: bool
+
+class ResumeImportRequest(BaseModel):
+    url: str
+    name: str | None = None
 
 class JobResponse(BaseModel):
     model_config = {"from_attributes": True}
@@ -108,18 +112,51 @@ async def upload_resume(
     db.commit()
     db.refresh(resume)
     print(f"DEBUG: Successfully saved resume ID: {resume.id}, name: {resume.name}")
-    
-    # Create preview (first 200 chars)
-    preview = content[:200] + "..." if len(content) > 200 else content
-    
+
     return ResumeResponse(
         id=resume.id,
         name=resume.name,
-        preview=preview,
-        is_master=resume.is_master
+        preview=content[:100] + "...",
+        is_master=resume.is_master,
     )
 
+@app.post("/api/resumes/import-url", response_model=ResumeResponse)
+async def import_resume_from_url(
+    request: ResumeImportRequest,
+    db: Session = Depends(get_db)
+):
+    """Import a resume by scraping a URL (e.g. LinkedIn)."""
+    print(f"DEBUG: Received import request for URL: {request.url}, name: {request.name}")
+    
+    # Scrape content using our tool
+    content = await scrape_job_description(request.url)
+    
+    if content.startswith("Error:"):
+        raise HTTPException(status_code=400, detail=content)
+    
+    if not content.strip():
+        raise HTTPException(status_code=400, detail="The scraped resume content is empty.")
+    
+    # Set this as the master resume (latest) and demote previous ones
+    db.query(models.Resume).update({models.Resume.is_master: False})
+    
+    # Save to database
+    resume = models.Resume(
+        name=request.name if request.name else f"Imported from {request.url[:30]}...",
+        content=content,
+        is_master=True
+    )
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+    print(f"DEBUG: Successfully imported resume ID: {resume.id}, name: {resume.name}")
 
+    return ResumeResponse(
+        id=resume.id,
+        name=resume.name,
+        preview=content[:100] + "...",
+        is_master=resume.is_master,
+    )
 @app.get("/api/resumes", response_model=List[ResumeResponse])
 async def get_resumes(db: Session = Depends(get_db)):
     """Get all uploaded resumes."""
