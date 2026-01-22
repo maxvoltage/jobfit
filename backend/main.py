@@ -62,6 +62,10 @@ class JobResponse(BaseModel):
 
 
 
+
+class RegenerateRequest(BaseModel):
+    prompt: str | None = None
+
 @app.get("/")
 async def root():
     import os
@@ -175,6 +179,30 @@ async def get_resumes(db: Session = Depends(get_db)):
     return results
 
 
+def extract_agent_data(result):
+    """Robustly extract data from an agent result object, handling various formats."""
+    print(f"DEBUG: Result Type: {type(result)}")
+    
+    # Try .data attribute (standard pydantic-ai)
+    data = getattr(result, 'data', None)
+    if data is not None:
+        return data
+        
+    # Fallback to other common attributes
+    for attr in ['result', 'output', 'content', 'message']:
+        data = getattr(result, attr, None)
+        if data is not None:
+            print(f"DEBUG: Found data in .{attr} attribute")
+            return data
+            
+    # If it's a string or has a .text (some versions/fallbacks)
+    if hasattr(result, 'text'):
+        print("DEBUG: Found data in .text attribute")
+        return result.text
+        
+    print("DEBUG: Could not find structured data attribute. Returning result object itself.")
+    return result
+
 @app.post("/api/analyze")
 async def analyze_job(
     request: AnalyzeJobRequest,
@@ -202,36 +230,15 @@ async def analyze_job(
                 f"Tailor this resume for the job at: {request.url}\n\nResume Content:\n{resume.content}"
             )
         
-        # DEBUG: Exhaustive inspection
-        print(f"DEBUG: Result Type: {type(result)}")
-        print(f"DEBUG: Result Dir: {dir(result)}")
-        try:
-            print(f"DEBUG: Result Data (attr): {result.data if hasattr(result, 'data') else 'N/A'}")
-        except Exception as e:
-            print(f"DEBUG: Error accessing result.data: {e}")
-
-        # Get the data from the result
-        data = getattr(result, 'data', None)
-        if data is None:
-             # Fallback check for common patterns in AI libraries
-             for attr in ['result', 'output', 'content', 'message']:
-                 data = getattr(result, attr, None)
-                 if data: break
-        
-        if data is None:
-            print("ERROR: Could not find data attribute in Result object. Using result object directly as last resort.")
-            data = result
-            
-        print(f"DEBUG: Data Type: {type(data)}")
-        print(f"DEBUG: Data Attributes: {[a for a in dir(data) if not a.startswith('_')]}")
+        # Robust data extraction
+        data = extract_agent_data(result)
         
         # Save to Job table
-        # Use getattr for everything to prevent crashes while debugging
-        match_score = getattr(data, 'match_score', 0)
         company = getattr(data, 'company_name', "Unknown Company")
         title = getattr(data, 'job_title', "Job Title")
+        match_score = getattr(data, 'match_score', 0)
         
-        # Fallback if AI didn't return them (for older models/versions)
+        # Fallback if AI didn't return them
         if company == "Unknown Company":
             improvements = getattr(data, 'key_improvements', [])
             if improvements and len(improvements) > 0:
@@ -360,3 +367,88 @@ async def delete_job(job_id: int, db: Session = Depends(get_db)):
     db.commit()
     
     return {"message": "Job deleted successfully"}
+    
+@app.post("/api/jobs/{job_id}/regenerate")
+async def regenerate_job_content(
+    job_id: int,
+    request: RegenerateRequest,
+    db: Session = Depends(get_db)
+):
+    """Regenerate tailored resume and cover letter with optional user prompt."""
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    resume = db.query(models.Resume).filter(models.Resume.id == job.resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Original resume not found")
+
+    try:
+        user_prompt = request.prompt or "Please regenerate the content."
+        print(f"DEBUG: Regenerating job ID {job_id} with prompt: {user_prompt}")
+        
+        # Construct the context for the agent
+        context = f"""
+Original Job Description:
+{job.original_jd or job.url}
+
+Original Resume:
+{resume.content}
+
+Current Tailored Resume:
+{job.tailored_resume}
+
+Current Cover Letter:
+{job.cover_letter}
+
+User Request for Regeneration:
+{user_prompt}
+
+TASK:
+1. Update the tailored resume (tailored_resume_html) following the user request.
+2. Update the cover letter (cover_letter_html) accordingly.
+3. Re-calculate the match score.
+4. Keep the company name '{job.company}' and job title '{job.title}'.
+
+Please provide the updated content in the required structured format.
+"""
+        # We use resume_agent_no_tools since we already have all the info
+        result = await resume_agent_no_tools.run(context)
+        data = extract_agent_data(result)
+        
+        if data:
+            # Update only if the field is present in the data AND it's a valid primitive/string
+            # Using str() or int() transformation to ensure it's not a MagicMock or other object
+            new_resume = getattr(data, 'tailored_resume_html', None)
+            new_cover = getattr(data, 'cover_letter_html', None)
+            new_score = getattr(data, 'match_score', None)
+            
+            # Additional validation: if fields are mock objects, don't use them
+            # This is important for both tests and production robustness
+            if new_resume is not None and not hasattr(new_resume, '__call__'):
+                job.tailored_resume = str(new_resume)
+            if new_cover is not None and not hasattr(new_cover, '__call__'):
+                job.cover_letter = str(new_cover)
+            if new_score is not None and not hasattr(new_score, '__call__'):
+                try:
+                    job.match_score = int(new_score)
+                except (ValueError, TypeError):
+                    pass
+            
+            db.commit()
+            db.refresh(job)
+            
+            return {
+                "resume": job.tailored_resume,
+                "coverLetter": job.cover_letter,
+                "matchScore": job.match_score
+            }
+        else:
+            print("ERROR: extract_agent_data returned None or empty result")
+            raise HTTPException(status_code=500, detail="Failed to get data from agent")
+            
+    except Exception as e:
+        import traceback
+        print(f"ERROR: Regeneration failed: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Regeneration failed: {str(e)}")

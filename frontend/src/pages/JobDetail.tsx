@@ -9,6 +9,16 @@ import { MatchScoreBadge } from '@/components/MatchScoreBadge';
 import { getApplication, regenerateContent, updateApplication, downloadJobPdf } from '@/lib/api';
 import { JobApplication } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from '@/components/ui/textarea';
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +29,8 @@ export default function JobDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [activeTab, setActiveTab] = useState('resume');
+  const [regenPrompt, setRegenPrompt] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -73,21 +85,24 @@ export default function JobDetail() {
     if (!id) return;
 
     setIsRegenerating(true);
+    setIsDialogOpen(false);
     try {
-      const result = await regenerateContent(id);
+      const result = await regenerateContent(id, regenPrompt);
       setApplication(prev => prev ? {
         ...prev,
         tailoredResume: result.resume,
         coverLetter: result.coverLetter,
+        matchScore: result.matchScore ?? prev.matchScore,
       } : null);
       toast({
         title: 'Regenerated',
         description: 'Content has been regenerated successfully',
       });
-    } catch (error) {
+      setRegenPrompt('');
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to regenerate content',
+        description: error.message || 'Failed to regenerate content',
         variant: 'destructive',
       });
     } finally {
@@ -170,18 +185,47 @@ export default function JobDetail() {
               </Label>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={handleRegenerate}
-                disabled={isRegenerating}
-              >
-                {isRegenerating ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                )}
-                Regenerate
-              </Button>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={isRegenerating}
+                  >
+                    {isRegenerating ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    Regenerate
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Regenerate Content</DialogTitle>
+                    <DialogDescription>
+                      Is there something specific you'd like to change or correct?
+                      (e.g., "my name is wrong", "emphasize my Python skills more")
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <Textarea
+                      placeholder="Enter your instructions here (optional)..."
+                      value={regenPrompt}
+                      onChange={(e) => setRegenPrompt(e.target.value)}
+                      className="min-h-[120px]"
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="submit"
+                      onClick={handleRegenerate}
+                      disabled={isRegenerating}
+                    >
+                      {isRegenerating ? "Regenerating..." : "Start Regeneration"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <Button onClick={handleDownloadPdf}>
                 <Download className="mr-2 h-4 w-4" />
                 Download PDF

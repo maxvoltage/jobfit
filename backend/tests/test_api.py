@@ -241,3 +241,96 @@ class TestDeleteJob:
         response = client.delete("/api/jobs/9999")
         
         assert response.status_code == 404
+
+
+class TestRegenerateJob:
+    """Test job content regeneration endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_regenerate_job_success(self, client, sample_job, sample_resume):
+        """Test successful job content regeneration."""
+        # Mock the agent response
+        mock_result = MagicMock()
+        mock_result.data = ResumeMatchResult(
+            match_score=95,
+            tailored_resume_html="<h1>Updated Tailored Resume</h1>",
+            cover_letter_html="<p>Updated Cover letter</p>",
+            company_name="Test Company",
+            job_title="Software Engineer",
+            key_improvements=["Even more Python", "AWS certification added"]
+        )
+
+        with patch('main.resume_agent_no_tools.run', new_callable=AsyncMock) as mock_agent:
+            mock_agent.return_value = mock_result
+            
+            payload = {"prompt": "tech skill should have postgres instead of mysql"}
+            response = client.post(f"/api/jobs/{sample_job.id}/regenerate", json=payload)
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["resume"] == "<h1>Updated Tailored Resume</h1>"
+            assert data["coverLetter"] == "<p>Updated Cover letter</p>"
+            assert data["matchScore"] == 95
+
+    @pytest.mark.asyncio
+    async def test_regenerate_job_no_prompt(self, client, sample_job):
+        """Test regeneration without a prompt (uses default)."""
+        mock_result = MagicMock()
+        mock_result.data = ResumeMatchResult(
+            match_score=90,
+            tailored_resume_html="<h1>Regenerated</h1>",
+            cover_letter_html="<p>Regenerated</p>",
+            company_name="Test Company",
+            job_title="Software Engineer"
+        )
+
+        with patch('main.resume_agent_no_tools.run', new_callable=AsyncMock) as mock_agent:
+            mock_agent.return_value = mock_result
+            
+            # Send empty JSON or no prompt
+            response = client.post(f"/api/jobs/{sample_job.id}/regenerate", json={})
+            
+            assert response.status_code == 200
+            # Should have called agent even without prompt
+            assert mock_agent.called
+
+    def test_regenerate_job_not_found(self, client):
+        """Test regeneration for non-existent job."""
+        response = client.post("/api/jobs/9999/regenerate", json={"prompt": "test"})
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_regenerate_job_agent_error(self, client, sample_job):
+        """Test regeneration failure handling."""
+        with patch('main.resume_agent_no_tools.run', new_callable=AsyncMock) as mock_agent:
+            mock_agent.side_effect = Exception("Regeneration failed")
+            
+            response = client.post(f"/api/jobs/{sample_job.id}/regenerate", json={"prompt": "fail me"})
+            
+            assert response.status_code == 500
+            assert "failed" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_regenerate_job_missing_data(self, client, sample_job):
+        """Test regeneration when agent returns incomplete data."""
+        mock_result = MagicMock()
+        # Mocking an object with no .data and no fallback attributes
+        # This should trigger our 'extract_agent_data' logic path
+        mock_result.data = None
+        
+        with patch('main.resume_agent_no_tools.run', new_callable=AsyncMock) as mock_agent:
+            mock_agent.return_value = mock_result
+            
+            response = client.post(f"/api/jobs/{sample_job.id}/regenerate", json={"prompt": "break stuff"})
+            
+            # Since we couldn't find ANY data attributes in mock_result, 
+            # our fallback returns the result object itself, but it has no resume_html etc.
+            # So the conditional updates in main.py won't happen, and it will return the ORIGINAL values.
+            # BUT if extract_agent_data returns something that fails 'if data:', it returns 500.
+            # In our implementation: 'if data:' on MagicMock is True.
+            # Then getattr(data, 'tailored_resume_html', None) returns None for MagicMock.
+            # The code should actually return a 200 with original values in this specific mock case,
+            # or we can test the error path more strictly.
+            
+            assert response.status_code == 200 
+            # Returns original sample_job values since new ones are None

@@ -31,7 +31,7 @@ vi.mock('react-router-dom', async () => {
 describe('NewApplication Auto-save and Redirect', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'Resume 1', is_master: true }]);
+        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'Resume 1', content: 'Mock content', is_master: true }]);
     });
 
     it('should analyze manual entry and redirect immediately', async () => {
@@ -83,9 +83,9 @@ describe('NewApplication Auto-save and Redirect', () => {
 
     it('should default to master resume even if it is not the first one', async () => {
         const resumes = [
-            { id: 1, name: 'Old CV', is_master: false },
-            { id: 2, name: 'Latest Master CV', is_master: true },
-            { id: 3, name: 'Draft CV', is_master: false }
+            { id: 1, name: 'Old CV', content: 'Old content', is_master: false },
+            { id: 2, name: 'Latest Master CV', content: 'Master content', is_master: true },
+            { id: 3, name: 'Draft CV', content: 'Draft content', is_master: false }
         ];
         vi.mocked(api.getResumes).mockResolvedValue(resumes);
 

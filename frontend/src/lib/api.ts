@@ -114,12 +114,19 @@ export async function deleteApplication(id: string): Promise<void> {
   if (!response.ok) throw new Error('Failed to delete application');
 }
 
-export async function regenerateContent(id: string): Promise<{ resume: string; coverLetter: string }> {
-  // Mock for now
-  return {
-    resume: `# Regenerated Resume\n**Updated at ${new Date().toLocaleTimeString()}**`,
-    coverLetter: `Dear Hiring Manager,\n\nThis is a regenerated cover letter...`,
-  };
+export async function regenerateContent(id: string, prompt?: string): Promise<{ resume: string; coverLetter: string; matchScore?: number }> {
+  const response = await fetch(`${API_BASE_URL}/jobs/${id}/regenerate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to regenerate content');
+  }
+
+  return await response.json();
 }
 
 export async function uploadResume(file: File, name?: string): Promise<Resume> {
