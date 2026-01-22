@@ -8,7 +8,7 @@ dependencies = [
     "fastapi>=0.128.0",
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
-    "markitdown>=0.1.4",
+    "markitdown[pdf]>=0.1.4",
     "pydantic-ai>=1.44.0",
     "python-multipart>=0.0.21",
     "sqlmodel>=0.0.31",
@@ -22,3 +22,9 @@ dev = [
     "pytest-asyncio>=1.3.0",
     "ruff>=0.14.13",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests that use real external resources (PDFs, HTTP calls)",
+]
+testpaths = ["tests"]
