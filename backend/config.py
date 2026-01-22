@@ -16,7 +16,8 @@ LLM_NAME = os.getenv('LLM_NAME', 'openai:gpt-4o')
 # GOOGLE_API_KEY - loaded from .env
 
 # Database Configuration
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./jobfit.db')
+BASE_DIR = Path(__file__).parent.parent
+DATABASE_URL = os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR}/jobfit.db")
 
 # Application Settings
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'

@@ -13,6 +13,7 @@ export interface JobApplication {
 }
 
 export interface AnalyzeJobResponse {
+  id?: string;
   companyName: string;
   jobTitle: string;
   jobDescription: string;

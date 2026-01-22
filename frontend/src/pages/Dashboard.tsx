@@ -3,8 +3,8 @@ import { Plus, Briefcase, TrendingUp, TrendingDown, CheckCircle, Clock, Loader2 
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ApplicationTable } from '@/components/ApplicationTable';
-import { getApplications, deleteApplication } from '@/lib/api';
-import { JobApplication } from '@/types';
+import { getApplications, deleteApplication, getMasterResume } from '@/lib/api';
+import { JobApplication, Resume } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +12,7 @@ type FilterType = 'all' | 'high' | 'medium' | 'applied' | 'tbd';
 
 export default function Dashboard() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [masterResume, setMasterResume] = useState<Resume | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -25,7 +26,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadApplications();
+    loadMasterResume();
   }, []);
+
+  const loadMasterResume = async () => {
+    try {
+      const resume = await getMasterResume();
+      if (resume) setMasterResume(resume);
+    } catch (error) {
+      console.error('Failed to load master resume:', error);
+    }
+  };
 
   useEffect(() => {
     if (activeFilter === 'all') {
@@ -149,7 +160,9 @@ export default function Dashboard() {
       <div className="page-header flex items-center justify-between">
         <div>
           <h1 className="page-title">Dashboard</h1>
-          <p className="page-description">Track and manage your job applications</p>
+          <p className="page-description">
+            {masterResume ? `Target Resume: ${masterResume.name}` : 'Track and manage your job applications'}
+          </p>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Eye, Download, Trash2, MoreHorizontal, Check, X } from 'lucide-react';
+import { downloadJobPdf } from '@/lib/api';
 import {
   Table,
   TableBody,
@@ -39,17 +40,13 @@ export function ApplicationTable({ applications, onDelete }: ApplicationTablePro
     navigate(`/job/${id}`);
   };
 
-  const handleDownloadPdf = (e: React.MouseEvent, application: JobApplication) => {
+  const handleDownloadPdf = async (e: React.MouseEvent, application: JobApplication) => {
     e.stopPropagation();
-    console.log('Downloading PDF for:', application.companyName);
-    const content = `${application.jobTitle} at ${application.companyName}\n\n${application.tailoredResume || 'No resume generated'}`;
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${application.companyName}-resume.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      await downloadJobPdf(application.id, 'resume');
+    } catch (error) {
+      console.error('Failed to download PDF:', error);
+    }
   };
 
   if (applications.length === 0) {

@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { MatchScoreBadge } from '@/components/MatchScoreBadge';
-import { getApplication, regenerateContent, updateApplication } from '@/lib/api';
+import { getApplication, regenerateContent, updateApplication, downloadJobPdf } from '@/lib/api';
 import { JobApplication } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -52,7 +52,7 @@ export default function JobDetail() {
 
   const handleAppliedChange = async (checked: boolean) => {
     if (!id || !application) return;
-    
+
     try {
       await updateApplication(id, { applied: checked });
       setApplication(prev => prev ? { ...prev, applied: checked } : null);
@@ -71,7 +71,7 @@ export default function JobDetail() {
 
   const handleRegenerate = async () => {
     if (!id) return;
-    
+
     setIsRegenerating(true);
     try {
       const result = await regenerateContent(id);
@@ -95,25 +95,22 @@ export default function JobDetail() {
     }
   };
 
-  const handleDownloadPdf = () => {
-    if (!application) return;
-    
-    const content = activeTab === 'resume' 
-      ? application.tailoredResume 
-      : application.coverLetter;
-    
-    const blob = new Blob([content || 'No content'], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${application.companyName}-${activeTab}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: 'Downloaded',
-      description: `${activeTab === 'resume' ? 'Resume' : 'Cover Letter'} downloaded`,
-    });
+  const handleDownloadPdf = async () => {
+    if (!id || !application) return;
+
+    try {
+      await downloadJobPdf(id, activeTab as 'resume' | 'cover');
+      toast({
+        title: 'Downloaded',
+        description: `${activeTab === 'resume' ? 'Resume' : 'Cover Letter'} download started`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to download PDF. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (isLoading) {
@@ -146,7 +143,7 @@ export default function JobDetail() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
         </Button>
-        
+
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -156,16 +153,15 @@ export default function JobDetail() {
               <h1 className="page-title">{application.jobTitle}</h1>
               <p className="text-muted-foreground flex items-center gap-2">
                 {application.companyName}
-                <span className="text-border">•</span>
-                <MatchScoreBadge score={application.matchScore} />
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
+            <MatchScoreBadge score={application.matchScore} className="mr-2" />
             <div className="flex items-center gap-2">
-              <Checkbox 
-                id="applied" 
+              <Checkbox
+                id="applied"
                 checked={application.applied}
                 onCheckedChange={handleAppliedChange}
               />
@@ -246,26 +242,41 @@ export default function JobDetail() {
 }
 
 function MarkdownPreview({ content }: { content: string }) {
-  // Simple markdown-like rendering
+  // Check if content is HTML
+  const isHtml = content.trim().startsWith('<!DOCTYPE html>') || content.trim().startsWith('<html');
+
+  if (isHtml) {
+    return (
+      <div className="prose max-w-none dark:prose-invert">
+        <iframe
+          srcDoc={content}
+          className="w-full h-[600px] border-0 bg-white"
+          title="Resume Preview"
+        />
+      </div>
+    );
+  }
+
+  // Fallback for plain text/markdown
   const lines = content.split('\n');
-  
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 font-sans">
       {lines.map((line, index) => {
         if (line.startsWith('# ')) {
-          return <h1 key={index}>{line.slice(2)}</h1>;
+          return <h1 key={index} className="text-2xl font-bold mt-4 mb-2">{line.slice(2)}</h1>;
         }
         if (line.startsWith('## ')) {
-          return <h2 key={index}>{line.slice(3)}</h2>;
+          return <h2 key={index} className="text-xl font-semibold mt-3 mb-2">{line.slice(3)}</h2>;
         }
         if (line.startsWith('### ')) {
-          return <h3 key={index}>{line.slice(4)}</h3>;
+          return <h3 key={index} className="text-lg font-medium mt-2 mb-1">{line.slice(4)}</h3>;
         }
         if (line.startsWith('**') && line.endsWith('**')) {
           return <p key={index} className="font-semibold">{line.slice(2, -2)}</p>;
         }
         if (line.startsWith('- ') || line.startsWith('• ')) {
-          return <li key={index}>{line.slice(2)}</li>;
+          return <li key={index} className="ml-4">{line.slice(2)}</li>;
         }
         if (line.startsWith('*') && line.endsWith('*')) {
           return <p key={index} className="italic text-muted-foreground">{line.slice(1, -1)}</p>;
@@ -273,7 +284,7 @@ function MarkdownPreview({ content }: { content: string }) {
         if (line.trim() === '') {
           return <div key={index} className="h-2" />;
         }
-        return <p key={index}>{line}</p>;
+        return <p key={index} className="leading-relaxed">{line}</p>;
       })}
     </div>
   );

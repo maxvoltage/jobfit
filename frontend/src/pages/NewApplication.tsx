@@ -1,26 +1,47 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Link2, FileText, Loader2, ArrowLeft, Save } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Link2, FileText, Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { MatchScoreBadge } from '@/components/MatchScoreBadge';
-import { analyzeJobUrl, analyzeJobDescription, saveApplication } from '@/lib/api';
+import { analyzeJobUrl, analyzeJobDescription, getResumes } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { AnalyzeJobResponse } from '@/types';
+import { AnalyzeJobResponse, Resume } from '@/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function NewApplication() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [activeTab, setActiveTab] = useState('url');
   const [jobUrl, setJobUrl] = useState('');
   const [manualDescription, setManualDescription] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [analyzedData, setAnalyzedData] = useState<AnalyzeJobResponse | null>(null);
+  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [selectedResumeId, setSelectedResumeId] = useState<string>('');
+
+  useEffect(() => {
+    const fetchResumes = async () => {
+      try {
+        const data = await getResumes();
+        setResumes(data);
+        if (data.length > 0) {
+          setSelectedResumeId(data[0].id.toString());
+        }
+      } catch (error) {
+        console.error('Failed to fetch resumes:', error);
+      }
+    };
+    fetchResumes();
+  }, []);
 
   const handleAnalyzeUrl = async () => {
     if (!jobUrl.trim()) {
@@ -34,12 +55,15 @@ export default function NewApplication() {
 
     setIsAnalyzing(true);
     try {
-      const result = await analyzeJobUrl(jobUrl);
-      setAnalyzedData(result);
+      const result = await analyzeJobUrl(jobUrl, parseInt(selectedResumeId));
       toast({
         title: 'Analysis Complete',
-        description: 'Job description has been analyzed successfully',
+        description: 'Job analyzed successfully',
       });
+      // Redirect immediately since it's already saved
+      if (result.id) {
+        navigate(`/job/${result.id}`);
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -63,12 +87,15 @@ export default function NewApplication() {
 
     setIsAnalyzing(true);
     try {
-      const result = await analyzeJobDescription(manualDescription);
-      setAnalyzedData(result);
+      const result = await analyzeJobDescription(manualDescription, parseInt(selectedResumeId));
       toast({
         title: 'Analysis Complete',
         description: 'Job description has been analyzed successfully',
       });
+      // Redirect immediately since it's already saved
+      if (result.id) {
+        navigate(`/job/${result.id}`);
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -78,43 +105,6 @@ export default function NewApplication() {
     } finally {
       setIsAnalyzing(false);
     }
-  };
-
-  const handleSave = async () => {
-    if (!analyzedData) return;
-
-    setIsSaving(true);
-    try {
-      const saved = await saveApplication({
-        companyName: analyzedData.companyName,
-        jobTitle: analyzedData.jobTitle,
-        jobDescription: analyzedData.jobDescription,
-        matchScore: analyzedData.matchScore,
-        tailoredResume: analyzedData.tailoredResume,
-        coverLetter: analyzedData.coverLetter,
-        jobUrl: activeTab === 'url' ? jobUrl : undefined,
-      });
-      
-      toast({
-        title: 'Saved',
-        description: 'Application saved successfully',
-      });
-      navigate(`/job/${saved.id}`);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to save application',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleReset = () => {
-    setAnalyzedData(null);
-    setJobUrl('');
-    setManualDescription('');
   };
 
   return (
@@ -135,7 +125,7 @@ export default function NewApplication() {
 
       <div className="max-w-3xl">
         <div className="card-elevated">
-          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setAnalyzedData(null); }}>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full grid grid-cols-2 m-4 max-w-md">
               <TabsTrigger value="url" className="gap-2">
                 <Link2 className="h-4 w-4" />
@@ -149,138 +139,112 @@ export default function NewApplication() {
 
             <div className="p-6 pt-2">
               <TabsContent value="url" className="mt-0">
-                {!analyzedData ? (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="jobUrl" className="input-label">Job URL</Label>
-                      <Input
-                        id="jobUrl"
-                        placeholder="https://careers.example.com/job/12345"
-                        value={jobUrl}
-                        onChange={(e) => setJobUrl(e.target.value)}
-                        className="h-11"
-                      />
-                      <p className="text-sm text-muted-foreground mt-1.5">
-                        Paste the job posting URL and we'll extract the details
-                      </p>
-                    </div>
-                    <Button
-                      onClick={handleAnalyzeUrl}
-                      disabled={isAnalyzing || !jobUrl.trim()}
-                      className="w-full h-11"
-                    >
-                      {isAnalyzing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Analyzing...
-                        </>
-                      ) : (
-                        'Analyze'
-                      )}
-                    </Button>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="input-label">Select Resume</Label>
+                    {resumes.length > 0 ? (
+                      <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a resume" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {resumes.map((r) => (
+                            <SelectItem key={r.id} value={r.id.toString()}>
+                              {r.name} {r.is_master ? '(Master)' : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="p-3 border rounded-md bg-muted/30 text-sm">
+                        No resumes found. <Link to="/upload-resume" className="text-primary hover:underline">Upload one first</Link>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <AnalyzedContent
-                    data={analyzedData}
-                    onSave={handleSave}
-                    onReset={handleReset}
-                    isSaving={isSaving}
-                  />
-                )}
+
+                  <div>
+                    <Label htmlFor="jobUrl" className="input-label">Job URL</Label>
+                    <Input
+                      id="jobUrl"
+                      placeholder="https://careers.example.com/job/12345"
+                      value={jobUrl}
+                      onChange={(e) => setJobUrl(e.target.value)}
+                      className="h-11"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1.5">
+                      Paste the job posting URL and we'll extract the details
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleAnalyzeUrl}
+                    disabled={isAnalyzing || !jobUrl.trim()}
+                    className="w-full h-11"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      'Analyze'
+                    )}
+                  </Button>
+                </div>
               </TabsContent>
 
               <TabsContent value="manual" className="mt-0">
-                {!analyzedData ? (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="description" className="input-label">Job Description</Label>
-                      <Textarea
-                        id="description"
-                        placeholder="Paste the full job description here..."
-                        value={manualDescription}
-                        onChange={(e) => setManualDescription(e.target.value)}
-                        className="min-h-[300px] resize-none"
-                      />
-                    </div>
-                    <Button
-                      onClick={handleAnalyzeManual}
-                      disabled={isAnalyzing || !manualDescription.trim()}
-                      className="w-full h-11"
-                    >
-                      {isAnalyzing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Analyzing...
-                        </>
-                      ) : (
-                        'Analyze'
-                      )}
-                    </Button>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="input-label">Select Resume</Label>
+                    {resumes.length > 0 ? (
+                      <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a resume" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {resumes.map((r) => (
+                            <SelectItem key={r.id} value={r.id.toString()}>
+                              {r.name} {r.is_master ? '(Master)' : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="p-3 border rounded-md bg-muted/30 text-sm">
+                        No resumes found. <Link to="/upload-resume" className="text-primary hover:underline">Upload one first</Link>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <AnalyzedContent
-                    data={analyzedData}
-                    onSave={handleSave}
-                    onReset={handleReset}
-                    isSaving={isSaving}
-                  />
-                )}
+
+                  <div>
+                    <Label htmlFor="description" className="input-label">Job Description</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Paste the full job description here..."
+                      value={manualDescription}
+                      onChange={(e) => setManualDescription(e.target.value)}
+                      className="min-h-[300px] resize-none"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleAnalyzeManual}
+                    disabled={isAnalyzing || !manualDescription.trim()}
+                    className="w-full h-11"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      'Analyze'
+                    )}
+                  </Button>
+                </div>
               </TabsContent>
             </div>
           </Tabs>
         </div>
-      </div>
-    </div>
-  );
-}
-
-interface AnalyzedContentProps {
-  data: AnalyzeJobResponse;
-  onSave: () => void;
-  onReset: () => void;
-  isSaving: boolean;
-}
-
-function AnalyzedContent({ data, onSave, onReset, isSaving }: AnalyzedContentProps) {
-  return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header with company info */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-xl font-semibold text-foreground">{data.jobTitle}</h3>
-          <p className="text-muted-foreground">{data.companyName}</p>
-        </div>
-        <MatchScoreBadge score={data.matchScore} className="text-sm" />
-      </div>
-
-      {/* Job Description */}
-      <div>
-        <Label className="input-label">Job Description</Label>
-        <div className="mt-1.5 p-4 rounded-lg bg-muted/50 max-h-[300px] overflow-y-auto">
-          <pre className="whitespace-pre-wrap text-sm text-foreground/90 font-sans">
-            {data.jobDescription}
-          </pre>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between pt-4 border-t">
-        <Button variant="ghost" onClick={onReset}>
-          Start Over
-        </Button>
-        <Button onClick={onSave} disabled={isSaving}>
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Save Application
-            </>
-          )}
-        </Button>
       </div>
     </div>
   );

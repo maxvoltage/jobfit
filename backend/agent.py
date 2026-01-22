@@ -20,6 +20,14 @@ class ResumeMatchResult(BaseModel):
         ...,
         description="A tailored cover letter in clean HTML format, ready for PDF conversion with WeasyPrint"
     )
+    company_name: str = Field(
+        ...,
+        description="The name of the company from the job description"
+    )
+    job_title: str = Field(
+        ...,
+        description="The job title from the job description"
+    )
     key_improvements: list[str] = Field(
         default_factory=list,
         description="List of key improvements made to the resume"
@@ -31,7 +39,8 @@ SYSTEM_PROMPT = """You are an expert Resume Writer and Career Coach with deep ex
 Your goal is to analyze a user's resume against a specific job description and produce:
 1. A tailored resume optimized for the job
 2. A compelling cover letter
-3. Both formatted as clean, professional HTML for PDF generation
+3. Extraction of the company name and job title
+4. Both formatted as clean, professional HTML for PDF generation
 
 When tailoring a resume:
 1. **Preserve the truth**: Never fabricate experience or skills. Only reframe and emphasize existing qualifications.
@@ -142,4 +151,12 @@ resume_agent = Agent(
     output_type=ResumeMatchResult,
     system_prompt=SYSTEM_PROMPT,
     tools=[scrape_job_description],
+)
+
+# Initialize a text-only agent for manual entry (avoids unnecessary scraping/tool errors)
+resume_agent_no_tools = Agent(
+    LLM_NAME,
+    output_type=ResumeMatchResult,
+    system_prompt=SYSTEM_PROMPT,
+    tools=[],
 )

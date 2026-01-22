@@ -1,243 +1,181 @@
 import { JobApplication, AnalyzeJobResponse, Resume } from '@/types';
 
-// Mock data for job applications
-export const mockApplications: JobApplication[] = [
-  {
-    id: '1',
-    dateAdded: '2024-01-15',
-    companyName: 'Google',
-    jobTitle: 'Senior Frontend Engineer',
-    matchScore: 92,
-    jobUrl: 'https://careers.google.com/jobs/1234',
-    jobDescription: `About the job
-We're looking for a Senior Frontend Engineer to join our team building the next generation of Google products. You'll work on complex web applications used by billions of users worldwide.
+const API_BASE_URL = 'http://localhost:8000/api';
 
-Responsibilities:
-• Design and implement new features for Google's web applications
-• Write high-quality, well-tested code
-• Collaborate with UX designers, product managers, and backend engineers
-• Mentor junior engineers and contribute to technical decisions
-• Optimize application performance and user experience
-
-Qualifications:
-• 5+ years of experience with JavaScript/TypeScript
-• Strong experience with React or similar frameworks
-• Experience with modern CSS and responsive design
-• Excellent problem-solving and communication skills
-• BS/MS in Computer Science or equivalent experience`,
-    tailoredResume: `# John Doe
-**Senior Frontend Engineer**
-
-## Summary
-Experienced frontend engineer with 7+ years building scalable web applications. Specialized in React, TypeScript, and modern CSS frameworks.
-
-## Experience
-
-### Lead Frontend Developer | TechCorp Inc.
-*2021 - Present*
-- Led development of customer-facing dashboard serving 2M+ users
-- Implemented performance optimizations reducing load time by 40%
-- Mentored team of 5 junior developers
-
-### Frontend Engineer | StartupXYZ
-*2018 - 2021*
-- Built React-based SPA from ground up
-- Integrated with RESTful APIs and GraphQL endpoints
-- Implemented responsive designs for mobile and desktop
-
-## Skills
-- **Languages:** TypeScript, JavaScript, HTML5, CSS3
-- **Frameworks:** React, Next.js, Vue.js
-- **Tools:** Git, Webpack, Vite, Jest, Cypress`,
-    coverLetter: `Dear Hiring Manager,
-
-I am excited to apply for the Senior Frontend Engineer position at Google. With over 7 years of experience building high-performance web applications, I am confident I would be a valuable addition to your team.
-
-My experience at TechCorp Inc. directly aligns with this role's requirements. I've led frontend development for applications serving millions of users, optimized performance, and mentored junior engineers.
-
-I am particularly drawn to Google's commitment to building products that impact billions of users. I would welcome the opportunity to discuss how my skills can contribute to your team.
-
-Best regards,
-John Doe`,
-    status: 'analyzed',
-    applied: true,
-  },
-  {
-    id: '2',
-    dateAdded: '2024-01-14',
-    companyName: 'Meta',
-    jobTitle: 'React Developer',
-    matchScore: 78,
-    jobDescription: 'Looking for a React developer to join our Instagram team...',
-    tailoredResume: '# Resume for Meta...',
-    coverLetter: 'Dear Hiring Manager...',
-    status: 'applied',
-    applied: true,
-  },
-  {
-    id: '3',
-    dateAdded: '2024-01-13',
-    companyName: 'Stripe',
-    jobTitle: 'Full Stack Engineer',
-    matchScore: 85,
-    jobDescription: 'Join Stripe to build the future of payments...',
-    tailoredResume: '# Resume for Stripe...',
-    coverLetter: 'Dear Hiring Manager...',
-    status: 'interview',
-    applied: false,
-  },
-  {
-    id: '4',
-    dateAdded: '2024-01-12',
-    companyName: 'Startup Inc',
-    jobTitle: 'Junior Developer',
-    matchScore: 45,
-    jobDescription: 'Entry level position for web development...',
-    status: 'pending',
-    applied: false,
-  },
-  {
-    id: '5',
-    dateAdded: '2024-01-11',
-    companyName: 'Amazon',
-    jobTitle: 'Software Development Engineer',
-    matchScore: 88,
-    jobDescription: 'AWS team looking for talented engineers...',
-    tailoredResume: '# Resume for Amazon...',
-    coverLetter: 'Dear Hiring Manager...',
-    status: 'analyzed',
-    applied: false,
-  },
-];
-
-// Simulated API delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Helper to normalize backend Job to frontend JobApplication
+const normalizeJob = (job: any): JobApplication => ({
+  id: job.id.toString(),
+  dateAdded: job.created_at || new Date().toISOString().split('T')[0],
+  companyName: job.company,
+  jobTitle: job.title,
+  matchScore: job.match_score,
+  jobUrl: job.url,
+  jobDescription: job.original_jd || '',
+  tailoredResume: job.tailored_resume,
+  coverLetter: job.cover_letter, // Backend needs to return this
+  status: job.status as any,
+  applied: job.status === 'applied',
+});
 
 // API Functions
 export async function getApplications(): Promise<JobApplication[]> {
-  return mockApplications;
+  try {
+    const response = await fetch(`${API_BASE_URL}/jobs`);
+    if (!response.ok) throw new Error('Failed to fetch applications');
+    const data = await response.json();
+    return data.map(normalizeJob);
+  } catch (error) {
+    console.error('Error fetching applications:', error);
+    return [];
+  }
 }
 
 export async function getApplication(id: string): Promise<JobApplication | undefined> {
-  return mockApplications.find(app => app.id === id);
+  try {
+    const response = await fetch(`${API_BASE_URL}/jobs/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch application');
+    const data = await response.json();
+    return normalizeJob(data);
+  } catch (error) {
+    console.error(`Error fetching application ${id}:`, error);
+    return undefined;
+  }
 }
 
 export async function updateApplication(id: string, updates: Partial<JobApplication>): Promise<JobApplication | undefined> {
-  const index = mockApplications.findIndex(app => app.id === id);
-  if (index > -1) {
-    mockApplications[index] = { ...mockApplications[index], ...updates };
-    return mockApplications[index];
-  }
-  return undefined;
+  const response = await fetch(`${API_BASE_URL}/jobs/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+
+  if (!response.ok) throw new Error('Failed to update application');
+  const data = await response.json();
+  return normalizeJob(data);
 }
 
-export async function analyzeJobUrl(url: string): Promise<AnalyzeJobResponse> {
+export async function analyzeJobUrl(url: string, resumeId: number): Promise<AnalyzeJobResponse & { id: string }> {
+  const response = await fetch(`${API_BASE_URL}/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, resume_id: resumeId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Analysis failed');
+  }
+
+  const data = await response.json();
   return {
-    companyName: 'TechCompany',
-    jobTitle: 'Software Engineer',
-    jobDescription: `About the Role
-We are seeking a talented Software Engineer to join our growing team. You will be responsible for designing and implementing new features for our platform.
-
-Requirements:
-• 3+ years of software development experience
-• Proficiency in JavaScript/TypeScript and React
-• Experience with cloud services (AWS, GCP, or Azure)
-• Strong communication and collaboration skills
-
-Benefits:
-• Competitive salary and equity
-• Health, dental, and vision insurance
-• Flexible work arrangements
-• Professional development budget`,
-    matchScore: Math.floor(Math.random() * 40) + 60,
-    tailoredResume: `# Your Name
-**Software Engineer**
-
-## Summary
-Experienced software engineer with expertise in modern web technologies...`,
-    coverLetter: `Dear Hiring Manager,
-
-I am writing to express my interest in the Software Engineer position...`,
+    id: data.job_id.toString(),
+    companyName: data.company,
+    jobTitle: data.title || 'Software Engineer',
+    jobDescription: '',
+    matchScore: data.score,
+    tailoredResume: data.tailored_resume,
+    coverLetter: data.cover_letter || '',
   };
 }
 
-export async function analyzeJobDescription(description: string): Promise<AnalyzeJobResponse> {
-  // Extract company and title from description (mock logic)
-  const lines = description.split('\n');
+export async function analyzeJobDescription(description: string, resumeId: number): Promise<AnalyzeJobResponse & { id: string }> {
+  const response = await fetch(`${API_BASE_URL}/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description, resume_id: resumeId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Analysis failed');
+  }
+
+  const data = await response.json();
   return {
-    companyName: 'Company Name',
-    jobTitle: 'Position Title',
+    id: data.job_id.toString(),
+    companyName: data.company,
+    jobTitle: data.title || 'Software Engineer',
     jobDescription: description,
-    matchScore: Math.floor(Math.random() * 40) + 60,
-    tailoredResume: `# Your Name
-**Position Title**
-
-## Summary
-Tailored resume based on the job description...`,
-    coverLetter: `Dear Hiring Manager,
-
-I am writing to express my interest...`,
+    matchScore: data.score,
+    tailoredResume: data.tailored_resume,
+    coverLetter: data.cover_letter || '',
   };
 }
 
 export async function saveApplication(application: Partial<JobApplication>): Promise<JobApplication> {
-  const newApp: JobApplication = {
-    id: Date.now().toString(),
-    dateAdded: new Date().toISOString().split('T')[0],
-    companyName: application.companyName || 'Unknown Company',
-    jobTitle: application.jobTitle || 'Unknown Position',
-    matchScore: application.matchScore || 0,
-    jobDescription: application.jobDescription || '',
-    tailoredResume: application.tailoredResume,
-    coverLetter: application.coverLetter,
-    jobUrl: application.jobUrl,
-    status: 'analyzed',
-    applied: false,
-  };
-  mockApplications.unshift(newApp);
-  return newApp;
+  // Application is already saved by /api/analyze, but we return the object for frontend logic compatibility
+  return application as JobApplication;
 }
 
 export async function deleteApplication(id: string): Promise<void> {
-  const index = mockApplications.findIndex(app => app.id === id);
-  if (index > -1) {
-    mockApplications.splice(index, 1);
-  }
+  const response = await fetch(`${API_BASE_URL}/jobs/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete application');
 }
 
 export async function regenerateContent(id: string): Promise<{ resume: string; coverLetter: string }> {
+  // Mock for now
   return {
-    resume: `# Regenerated Resume
-**Updated at ${new Date().toLocaleTimeString()}**
-
-## Summary
-This is a regenerated resume with fresh content...`,
-    coverLetter: `Dear Hiring Manager,
-
-This is a regenerated cover letter with updated content...`,
+    resume: `# Regenerated Resume\n**Updated at ${new Date().toLocaleTimeString()}**`,
+    coverLetter: `Dear Hiring Manager,\n\nThis is a regenerated cover letter...`,
   };
 }
-export const mockResumes: Resume[] = [
-  {
-    id: 1,
-    name: "Master Software Engineer Resume",
-    content: "# John Doe\nSoftware Engineer with 5 years of experience...",
-    is_master: true,
-  }
-];
 
-export async function uploadResume(file: File, name: string): Promise<Resume> {
-  // In a real app, this would be a multipart/form-data request
-  const newResume: Resume = {
-    id: Date.now(),
-    name: name || file.name,
-    content: "# Processed Resume Content\nThis is a mock of the extracted text from the PDF.",
-    is_master: false,
+export async function uploadResume(file: File, name?: string): Promise<Resume> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (name) formData.append('name', name);
+
+  const response = await fetch(`${API_BASE_URL}/resumes/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to upload resume');
+  }
+
+  const data = await response.json();
+  return {
+    id: data.id,
+    name: data.name,
+    content: data.preview, // We use preview in the UI
+    is_master: data.is_master,
   };
-  mockResumes.push(newResume);
-  return newResume;
 }
 
 export async function getResumes(): Promise<Resume[]> {
-  return mockResumes;
+  const response = await fetch(`${API_BASE_URL}/resumes`);
+  if (!response.ok) throw new Error('Failed to fetch resumes');
+  const data = await response.json();
+  return data.map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    content: r.preview || '',
+    is_master: r.is_master,
+  }));
+}
+
+export async function getMasterResume(): Promise<Resume | undefined> {
+  const resumes = await getResumes();
+  return resumes.find(r => r.is_master) || resumes[0];
+}
+
+export async function downloadJobPdf(jobId: string, type: 'resume' | 'cover' = 'resume') {
+  const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/pdf?pdf_type=${type}`, {
+    method: 'POST',
+  });
+
+  if (!response.ok) throw new Error('Failed to generate PDF');
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `application_${jobId}_${type}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
 }
