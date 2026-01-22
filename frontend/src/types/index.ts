@@ -20,3 +20,9 @@ export interface AnalyzeJobResponse {
   tailoredResume: string;
   coverLetter: string;
 }
+export interface Resume {
+  id: number;
+  name: string;
+  content: string;
+  is_master: boolean;
+}

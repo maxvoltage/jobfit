@@ -1,0 +1,311 @@
+openapi: 3.1.0
+info:
+  title: JobFit API
+  description: API for JobFit - AI-powered resume tailoring tool.
+  version: 1.0.0
+
+servers:
+  - url: /api
+    description: Local API server
+
+components:
+  schemas:
+    JobApplication:
+      type: object
+      required:
+        - id
+        - dateAdded
+        - companyName
+        - jobTitle
+        - matchScore
+        - applied
+        - jobDescription
+      properties:
+        id:
+          type: string
+          example: "1"
+        dateAdded:
+          type: string
+          format: date
+          example: "2024-01-15"
+        companyName:
+          type: string
+          example: "Google"
+        jobTitle:
+          type: string
+          example: "Senior Frontend Engineer"
+        matchScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 92
+        jobUrl:
+          type: string
+          format: uri
+          example: "https://careers.google.com/jobs/1234"
+        jobDescription:
+          type: string
+          example: "We're looking for a Senior Frontend Engineer..."
+        tailoredResume:
+          type: string
+          example: "# John Doe\n**Senior Frontend Engineer**..."
+        coverLetter:
+          type: string
+          example: "Dear Hiring Manager..."
+        applied:
+          type: boolean
+          example: true
+        resume_id:
+          type: integer
+          description: "ID of the master resume used for this application"
+
+    AnalyzeJobRequestUrl:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+        resume_id:
+          type: integer
+
+    AnalyzeJobRequestText:
+      type: object
+      required:
+        - description
+      properties:
+        description:
+          type: string
+        resume_id:
+          type: integer
+
+    AnalyzeJobResponse:
+      type: object
+      required:
+        - companyName
+        - jobTitle
+        - jobDescription
+        - matchScore
+        - tailoredResume
+        - coverLetter
+      properties:
+        companyName:
+          type: string
+        jobTitle:
+          type: string
+        jobDescription:
+          type: string
+        matchScore:
+          type: integer
+        tailoredResume:
+          type: string
+        coverLetter:
+          type: string
+
+    Resume:
+      type: object
+      required:
+        - id
+        - name
+        - content
+        - is_master
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        content:
+          type: string
+        is_master:
+          type: boolean
+
+paths:
+  /jobs:
+    get:
+      summary: List all job applications
+      responses:
+        "200":
+          description: A list of job applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobApplication"
+    post:
+      summary: Save a new job application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobApplication"
+      responses:
+        "201":
+          description: Application saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobApplication"
+
+  /jobs/{id}:
+    get:
+      summary: Get a specific job application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job application details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobApplication"
+    patch:
+      summary: Update a job application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobApplication"
+      responses:
+        "200":
+          description: Application updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobApplication"
+    delete:
+      summary: Delete a job application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Application deleted
+
+  /jobs/{id}/regenerate:
+    post:
+      summary: Regenerate tailored content for an application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resume:
+                    type: string
+                  coverLetter:
+                    type: string
+
+  /jobs/{id}/download:
+    get:
+      summary: Download tailored resume/cover letter as PDF
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [resume, cover]
+          default: resume
+      responses:
+        "200":
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /analyze/url:
+    post:
+      summary: Analyze job posting from URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeJobRequestUrl"
+      responses:
+        "200":
+          description: Analysis results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeJobResponse"
+
+  /analyze/text:
+    post:
+      summary: Analyze job posting from raw text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeJobRequestText"
+      responses:
+        "200":
+          description: Analysis results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeJobResponse"
+
+  /resumes:
+    get:
+      summary: List all uploaded resumes
+      responses:
+        "200":
+          description: A list of resumes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Resume"
+
+  /resumes/upload:
+    post:
+      summary: Upload a new master resume (PDF)
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Resume uploaded and processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resume"

@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import Index from "./pages/Index";
 import NewApplication from "./pages/NewApplication";
 import JobDetail from "./pages/JobDetail";
+import UploadResume from "./pages/UploadResume";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/new" element={<NewApplication />} />
+            <Route path="/upload" element={<UploadResume />} />
             <Route path="/job/:id" element={<JobDetail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

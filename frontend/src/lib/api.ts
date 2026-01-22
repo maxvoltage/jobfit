@@ -1,4 +1,4 @@
-import { JobApplication, AnalyzeJobResponse } from '@/types';
+import { JobApplication, AnalyzeJobResponse, Resume } from '@/types';
 
 // Mock data for job applications
 export const mockApplications: JobApplication[] = [
@@ -216,4 +216,28 @@ This is a regenerated resume with fresh content...`,
 
 This is a regenerated cover letter with updated content...`,
   };
+}
+export const mockResumes: Resume[] = [
+  {
+    id: 1,
+    name: "Master Software Engineer Resume",
+    content: "# John Doe\nSoftware Engineer with 5 years of experience...",
+    is_master: true,
+  }
+];
+
+export async function uploadResume(file: File, name: string): Promise<Resume> {
+  // In a real app, this would be a multipart/form-data request
+  const newResume: Resume = {
+    id: Date.now(),
+    name: name || file.name,
+    content: "# Processed Resume Content\nThis is a mock of the extracted text from the PDF.",
+    is_master: false,
+  };
+  mockResumes.push(newResume);
+  return newResume;
+}
+
+export async function getResumes(): Promise<Resume[]> {
+  return mockResumes;
 }

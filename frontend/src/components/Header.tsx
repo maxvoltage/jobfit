@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Briefcase, Plus, Upload } from 'lucide-react';
+import { Plus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -11,22 +11,28 @@ export function Header() {
       <div className="page-container !py-0">
         <div className="flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Briefcase className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg overflow-hidden bg-white/50 backdrop-blur-sm border border-border/50 shadow-sm transition-all group-hover:scale-110 group-hover:shadow-md">
+              <img src="/logo.png" alt="JobFit Logo" className="h-full w-full object-contain" />
             </div>
-            <span className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors">
-              JobTracker
+            <span className="font-bold text-xl text-foreground group-hover:text-primary transition-colors tracking-tight">
+              JobFit
             </span>
           </Link>
 
           <nav className="flex items-center gap-1">
             <Button
-              variant="outline"
+              asChild
+              variant={location.pathname === '/upload' ? 'secondary' : 'outline'}
               size="sm"
-              className="gap-2"
+              className={cn(
+                'gap-2',
+                location.pathname === '/upload' && 'bg-secondary text-foreground'
+              )}
             >
-              <Upload className="h-4 w-4" />
-              Upload My Resume
+              <Link to="/upload">
+                <Upload className="h-4 w-4" />
+                Upload My Resume
+              </Link>
             </Button>
             <Button
               asChild
