@@ -7,11 +7,19 @@ from weasyprint import HTML
 from datetime import datetime, UTC
 from typing import List
 
+import logfire
 from database import engine, Base, get_db
 import models
 import config
 from tools import extract_text_from_pdf, scrape_job_description
 from agent import resume_agent, resume_agent_no_tools
+
+# Initialize Logfire for elegant AI monitoring
+# send_to_logfire=False ensures it runs in local console mode without requiring an account/login
+logfire.configure(send_to_logfire=False)
+logfire.instrument_sqlalchemy(engine=engine)
+logfire.instrument_pydantic_ai()
+logfire.instrument_httpx()
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -21,6 +29,8 @@ app = FastAPI(
     description="AI-powered resume tailoring service",
     version="1.0.0"
 )
+
+logfire.instrument_fastapi(app)
 
 # Configure CORS
 app.add_middleware(
@@ -183,6 +193,18 @@ def extract_agent_data(result):
     """Robustly extract data from an agent result object, handling various formats."""
     print(f"DEBUG: Result Type: {type(result)}")
     
+    # Log usage if available (token counts)
+    try:
+        if hasattr(result, 'usage'):
+            usage = result.usage()
+            # PydanticAI Usage object uses request_tokens and response_tokens
+            total = getattr(usage, 'total_tokens', 0)
+            request = getattr(usage, 'request_tokens', 0)
+            response = getattr(usage, 'response_tokens', 0)
+            print(f"DEBUG: AI Interaction Summary -> Tokens: {total} (Request: {request}, Response: {response})")
+    except Exception as e:
+        print(f"DEBUG: Could not extract usage info: {e}")
+
     # Try .data attribute (standard pydantic-ai)
     data = getattr(result, 'data', None)
     if data is not None:

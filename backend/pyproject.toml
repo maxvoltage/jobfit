@@ -17,6 +17,7 @@ dependencies = [
     "pymupdf",
     "uvicorn>=0.40.0",
     "weasyprint>=68.0",
+    "logfire[fastapi,httpx,sqlalchemy]>=4.19.0",
 ]
 
 [dependency-groups]
