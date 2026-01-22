@@ -151,12 +151,6 @@ export default function Dashboard() {
           <h1 className="page-title">Dashboard</h1>
           <p className="page-description">Track and manage your job applications</p>
         </div>
-        <Button asChild>
-          <Link to="/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Application
-          </Link>
-        </Button>
       </div>
 
       {/* Stats Cards */}
