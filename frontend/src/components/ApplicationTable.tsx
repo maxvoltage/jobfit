@@ -114,10 +114,6 @@ export function ApplicationTable({ applications, onDelete }: ApplicationTablePro
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleView(application.id); }}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => handleDownloadPdf(e, application)}>
                           <Download className="mr-2 h-4 w-4" />
                           Download PDF
@@ -133,19 +129,6 @@ export function ApplicationTable({ applications, onDelete }: ApplicationTablePro
                     </DropdownMenu>
                   ) : (
                     <div className="flex items-center justify-end gap-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => { e.stopPropagation(); handleView(application.id); }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>View Details</TooltipContent>
-                      </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button

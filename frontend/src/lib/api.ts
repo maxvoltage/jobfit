@@ -115,17 +115,14 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // API Functions
 export async function getApplications(): Promise<JobApplication[]> {
-  await delay(500);
   return mockApplications;
 }
 
 export async function getApplication(id: string): Promise<JobApplication | undefined> {
-  await delay(300);
   return mockApplications.find(app => app.id === id);
 }
 
 export async function updateApplication(id: string, updates: Partial<JobApplication>): Promise<JobApplication | undefined> {
-  await delay(200);
   const index = mockApplications.findIndex(app => app.id === id);
   if (index > -1) {
     mockApplications[index] = { ...mockApplications[index], ...updates };
@@ -135,7 +132,6 @@ export async function updateApplication(id: string, updates: Partial<JobApplicat
 }
 
 export async function analyzeJobUrl(url: string): Promise<AnalyzeJobResponse> {
-  await delay(2000); // Simulate AI processing
   return {
     companyName: 'TechCompany',
     jobTitle: 'Software Engineer',
@@ -166,7 +162,6 @@ I am writing to express my interest in the Software Engineer position...`,
 }
 
 export async function analyzeJobDescription(description: string): Promise<AnalyzeJobResponse> {
-  await delay(2000);
   // Extract company and title from description (mock logic)
   const lines = description.split('\n');
   return {
@@ -186,7 +181,6 @@ I am writing to express my interest...`,
 }
 
 export async function saveApplication(application: Partial<JobApplication>): Promise<JobApplication> {
-  await delay(500);
   const newApp: JobApplication = {
     id: Date.now().toString(),
     dateAdded: new Date().toISOString().split('T')[0],
@@ -205,7 +199,6 @@ export async function saveApplication(application: Partial<JobApplication>): Pro
 }
 
 export async function deleteApplication(id: string): Promise<void> {
-  await delay(300);
   const index = mockApplications.findIndex(app => app.id === id);
   if (index > -1) {
     mockApplications.splice(index, 1);
@@ -213,7 +206,6 @@ export async function deleteApplication(id: string): Promise<void> {
 }
 
 export async function regenerateContent(id: string): Promise<{ resume: string; coverLetter: string }> {
-  await delay(1500);
   return {
     resume: `# Regenerated Resume
 **Updated at ${new Date().toLocaleTimeString()}**

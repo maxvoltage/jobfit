@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Plus, Briefcase, TrendingUp, TrendingDown, CheckCircle, Clock } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Briefcase, TrendingUp, TrendingDown, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ApplicationTable } from '@/components/ApplicationTable';
 import { getApplications, deleteApplication } from '@/lib/api';
@@ -13,12 +13,30 @@ type FilterType = 'all' | 'high' | 'medium' | 'applied' | 'tbd';
 export default function Dashboard() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [activeFilter, setActiveFilter] = useState<FilterType>(() => {
+    const urlFilter = searchParams.get('filter') as FilterType;
+    if (urlFilter) return urlFilter;
+    return (localStorage.getItem('dashboardFilter') as FilterType) || 'all';
+  });
+
   const { toast } = useToast();
 
   useEffect(() => {
     loadApplications();
   }, []);
+
+  useEffect(() => {
+    if (activeFilter === 'all') {
+      searchParams.delete('filter');
+      localStorage.removeItem('dashboardFilter');
+    } else {
+      searchParams.set('filter', activeFilter);
+      localStorage.setItem('dashboardFilter', activeFilter);
+    }
+    setSearchParams(searchParams, { replace: true });
+  }, [activeFilter, searchParams, setSearchParams]);
 
   const loadApplications = async () => {
     try {
@@ -33,6 +51,10 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFilterChange = (filter: FilterType) => {
+    setActiveFilter(filter);
   };
 
   const handleDelete = async (id: string) => {
@@ -52,7 +74,7 @@ export default function Dashboard() {
     }
   };
 
-  const stats = [
+  const stats = useMemo(() => [
     {
       key: 'all' as FilterType,
       label: 'Total',
@@ -103,22 +125,24 @@ export default function Dashboard() {
       activeBg: 'bg-muted-foreground',
       activeText: 'text-white',
     },
-  ];
+  ], [applications]);
 
-  const filteredApplications = applications.filter(app => {
-    switch (activeFilter) {
-      case 'high':
-        return app.matchScore >= 80;
-      case 'medium':
-        return app.matchScore >= 50 && app.matchScore < 80;
-      case 'applied':
-        return app.applied;
-      case 'tbd':
-        return !app.applied;
-      default:
-        return true;
-    }
-  });
+  const filteredApplications = useMemo(() => {
+    return applications.filter(app => {
+      switch (activeFilter) {
+        case 'high':
+          return app.matchScore >= 80;
+        case 'medium':
+          return app.matchScore >= 50 && app.matchScore < 80;
+        case 'applied':
+          return app.applied;
+        case 'tbd':
+          return !app.applied;
+        default:
+          return true;
+      }
+    });
+  }, [applications, activeFilter]);
 
   return (
     <div className="page-container">
@@ -142,12 +166,11 @@ export default function Dashboard() {
           return (
             <button
               key={stat.label}
-              onClick={() => setActiveFilter(stat.key)}
+              onClick={() => handleFilterChange(stat.key)}
               className={cn(
-                "card-elevated p-4 animate-fade-in text-left transition-all hover:scale-[1.02]",
+                "card-elevated p-4 text-left transition-all hover:scale-[1.02]",
                 isActive && "ring-2 ring-primary"
               )}
-              style={{ animationDelay: `${index * 100}ms` }}
             >
               <div className="flex items-center gap-3">
                 <div className={cn(
@@ -157,8 +180,8 @@ export default function Dashboard() {
                   <stat.icon className={cn("h-5 w-5", !isActive && stat.color)} />
                 </div>
                 <div>
-                  <p className="text-xl font-semibold text-foreground">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  <p className="text-xl font-semibold text-foreground tracking-tight">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{stat.label}</p>
                 </div>
               </div>
             </button>
