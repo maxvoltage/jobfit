@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from '@/components/ui/textarea';
+import ReactMarkdown from 'react-markdown';
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
@@ -241,9 +242,9 @@ export default function JobDetail() {
         <div className="card-elevated p-6">
           <h2 className="section-title">Original Job Description</h2>
           <div className="max-h-[600px] overflow-y-auto pr-2">
-            <pre className="whitespace-pre-wrap text-sm text-foreground/90 font-sans leading-relaxed">
-              {application.jobDescription}
-            </pre>
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown>{application.jobDescription}</ReactMarkdown>
+            </div>
           </div>
         </div>
 
@@ -301,35 +302,9 @@ function MarkdownPreview({ content }: { content: string }) {
     );
   }
 
-  // Fallback for plain text/markdown
-  const lines = content.split('\n');
-
   return (
-    <div className="space-y-2 font-sans">
-      {lines.map((line, index) => {
-        if (line.startsWith('# ')) {
-          return <h1 key={index} className="text-2xl font-bold mt-4 mb-2">{line.slice(2)}</h1>;
-        }
-        if (line.startsWith('## ')) {
-          return <h2 key={index} className="text-xl font-semibold mt-3 mb-2">{line.slice(3)}</h2>;
-        }
-        if (line.startsWith('### ')) {
-          return <h3 key={index} className="text-lg font-medium mt-2 mb-1">{line.slice(4)}</h3>;
-        }
-        if (line.startsWith('**') && line.endsWith('**')) {
-          return <p key={index} className="font-semibold">{line.slice(2, -2)}</p>;
-        }
-        if (line.startsWith('- ') || line.startsWith('• ')) {
-          return <li key={index} className="ml-4">{line.slice(2)}</li>;
-        }
-        if (line.startsWith('*') && line.endsWith('*')) {
-          return <p key={index} className="italic text-muted-foreground">{line.slice(1, -1)}</p>;
-        }
-        if (line.trim() === '') {
-          return <div key={index} className="h-2" />;
-        }
-        return <p key={index} className="leading-relaxed">{line}</p>;
-      })}
+    <div className="prose prose-sm dark:prose-invert max-w-none font-sans leading-relaxed">
+      <ReactMarkdown>{content}</ReactMarkdown>
     </div>
   );
 }

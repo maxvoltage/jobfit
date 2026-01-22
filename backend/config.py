@@ -21,3 +21,4 @@ DATABASE_URL = os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR}/jobfit.db")
 
 # Application Settings
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+DEBUG_PAYLOAD_LOGGING = os.getenv('DEBUG_PAYLOAD_LOGGING', 'True').lower() == 'true'

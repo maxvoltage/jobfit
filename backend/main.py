@@ -13,6 +13,8 @@ import models
 import config
 from tools import extract_text_from_pdf, scrape_job_description
 from agent import resume_agent, resume_agent_no_tools
+from logger import log_ai_interaction, log_debug, log_error
+
 
 # Initialize Logfire for elegant AI monitoring
 # send_to_logfire=False ensures it runs in local console mode without requiring an account/login
@@ -79,8 +81,8 @@ class RegenerateRequest(BaseModel):
 @app.get("/")
 async def root():
     import os
-    print(f"DEBUG: Using database at: {config.DATABASE_URL}")
-    print(f"DEBUG: Current working directory: {os.getcwd()}")
+    log_debug(f"Using database at: {config.DATABASE_URL}")
+    log_debug(f"Current working directory: {os.getcwd()}")
     return {
         "message": "Welcome to JobFit API",
         "llm_model": config.LLM_NAME,
@@ -95,7 +97,7 @@ async def upload_resume(
     db: Session = Depends(get_db)
 ):
     """Upload a PDF resume and extract its content."""
-    print(f"DEBUG: Received upload request for file: {file.filename}, name: {name}")
+    log_debug(f"Received upload request for file: {file.filename}, name: {name}")
     
     # Validate file type
     if not file.filename.endswith('.pdf'):
@@ -125,7 +127,7 @@ async def upload_resume(
     db.add(resume)
     db.commit()
     db.refresh(resume)
-    print(f"DEBUG: Successfully saved resume ID: {resume.id}, name: {resume.name}")
+    log_debug(f"Successfully saved resume ID: {resume.id}, name: {resume.name}")
 
     return ResumeResponse(
         id=resume.id,
@@ -140,7 +142,7 @@ async def import_resume_from_url(
     db: Session = Depends(get_db)
 ):
     """Import a resume by scraping a URL (e.g. LinkedIn)."""
-    print(f"DEBUG: Received import request for URL: {request.url}, name: {request.name}")
+    log_debug(f"Received import request for URL: {request.url}, name: {request.name}")
     
     # Scrape content using our tool
     content = await scrape_job_description(request.url)
@@ -163,7 +165,7 @@ async def import_resume_from_url(
     db.add(resume)
     db.commit()
     db.refresh(resume)
-    print(f"DEBUG: Successfully imported resume ID: {resume.id}, name: {resume.name}")
+    log_debug(f"Successfully imported resume ID: {resume.id}, name: {resume.name}")
 
     return ResumeResponse(
         id=resume.id,
@@ -191,7 +193,7 @@ async def get_resumes(db: Session = Depends(get_db)):
 
 def extract_agent_data(result):
     """Robustly extract data from an agent result object, handling various formats."""
-    print(f"DEBUG: Result Type: {type(result)}")
+    log_debug(f"Result Type: {type(result)}")
     
     # Log usage if available (token counts)
     try:
@@ -201,9 +203,9 @@ def extract_agent_data(result):
             total = getattr(usage, 'total_tokens', 0)
             request = getattr(usage, 'request_tokens', 0)
             response = getattr(usage, 'response_tokens', 0)
-            print(f"DEBUG: AI Interaction Summary -> Tokens: {total} (Request: {request}, Response: {response})")
+            log_debug(f"AI Interaction Summary -> Tokens: {total} (Request: {request}, Response: {response})")
     except Exception as e:
-        print(f"DEBUG: Could not extract usage info: {e}")
+        log_debug(f"Could not extract usage info: {e}")
 
     # Try .data attribute (standard pydantic-ai)
     data = getattr(result, 'data', None)
@@ -214,15 +216,15 @@ def extract_agent_data(result):
     for attr in ['result', 'output', 'content', 'message']:
         data = getattr(result, attr, None)
         if data is not None:
-            print(f"DEBUG: Found data in .{attr} attribute")
+            log_debug(f"Found data in .{attr} attribute")
             return data
             
     # If it's a string or has a .text (some versions/fallbacks)
     if hasattr(result, 'text'):
-        print("DEBUG: Found data in .text attribute")
+        log_debug("Found data in .text attribute")
         return result.text
         
-    print("DEBUG: Could not find structured data attribute. Returning result object itself.")
+    log_debug("Could not find structured data attribute. Returning result object itself.")
     return result
 
 @app.post("/api/analyze")
@@ -241,19 +243,34 @@ async def analyze_job(
     try:
         if request.description:
             job_input = f"the job description: {request.description}"
-            print(f"DEBUG: Starting AI analysis (Manual Mode) for resume ID {request.resume_id}...")
+            prompt = f"Tailor this resume for {job_input}\n\nResume Content:\n{resume.content}"
+            log_ai_interaction("AI REQUEST (MANUAL)", prompt, "blue")
+            
             # Use no-tools agent for manual entry to avoid tool call errors
-            result = await resume_agent_no_tools.run(
-                f"Tailor this resume for {job_input}\n\nResume Content:\n{resume.content}"
-            )
+            result = await resume_agent_no_tools.run(prompt)
         else:
-            print(f"DEBUG: Starting AI analysis (URL Mode) for resume ID {request.resume_id} and URL: {request.url}")
-            result = await resume_agent.run(
-                f"Tailor this resume for the job at: {request.url}\n\nResume Content:\n{resume.content}"
-            )
+            prompt = f"Tailor this resume for the job at: {request.url}\n\nResume Content:\n{resume.content}"
+            log_ai_interaction("AI REQUEST (URL)", prompt, "blue")
+            
+            result = await resume_agent.run(prompt)
         
         # Robust data extraction
         data = extract_agent_data(result)
+        
+        # Log response nicely
+        import json
+        # Log response nicely with more detail
+        import json
+        response_preview = {
+            "company": getattr(data, 'company_name', "N/A"),
+            "title": getattr(data, 'job_title', "N/A"),
+            "score": getattr(data, 'match_score', 0),
+            "improvements": getattr(data, 'key_improvements', []),
+            "extracted_jd": getattr(data, 'extracted_job_description', ""),
+            "resume_html": getattr(data, 'tailored_resume_html', ""),
+            "cover_letter_html": getattr(data, 'cover_letter_html', "")
+        }
+        log_ai_interaction("AI RESPONSE", json.dumps(response_preview, indent=2), "green", format="json")
         
         # Save to Job table
         company = getattr(data, 'company_name', "Unknown Company")
@@ -271,7 +288,7 @@ async def analyze_job(
             url=request.url,
             company=company,
             title=title, 
-            original_jd=request.description or "", 
+            original_jd=getattr(data, 'extracted_job_description', request.description or ""), 
             tailored_resume=getattr(data, 'tailored_resume_html', ""),
             cover_letter=getattr(data, 'cover_letter_html', ""),
             match_score=match_score,
@@ -282,7 +299,7 @@ async def analyze_job(
         db.commit()
         db.refresh(job)
         
-        print(f"DEBUG: Successfully saved job application ID: {job.id} for company: {job.company}")
+        log_debug(f"Successfully saved job application ID: {job.id} for company: {job.company}")
         
         return {
             "job_id": job.id,
@@ -294,7 +311,7 @@ async def analyze_job(
         
     except Exception as e:
         import traceback
-        print(f"ERROR: Analysis failed with exception: {str(e)}")
+        log_error(f"Analysis failed with exception: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
@@ -407,7 +424,6 @@ async def regenerate_job_content(
 
     try:
         user_prompt = request.prompt or "Please regenerate the content."
-        print(f"DEBUG: Regenerating job ID {job_id} with prompt: {user_prompt}")
         
         # Construct the context for the agent
         context = f"""
@@ -434,11 +450,23 @@ TASK:
 
 Please provide the updated content in the required structured format.
 """
+        log_ai_interaction("REGENERATE REQUEST", context, "cyan")
+
         # We use resume_agent_no_tools since we already have all the info
         result = await resume_agent_no_tools.run(context)
         data = extract_agent_data(result)
         
         if data:
+            # Log response nicely
+            import json
+            # Log response nicely
+            import json
+            response_preview = {
+                "score": getattr(data, 'match_score', "N/A"),
+                "resume_html": getattr(data, 'tailored_resume_html', ""),
+                "cover_letter_html": getattr(data, 'cover_letter_html', "")
+            }
+            log_ai_interaction("REGENERATE RESPONSE", json.dumps(response_preview, indent=2), "green", format="json")
             # Update only if the field is present in the data AND it's a valid primitive/string
             # Using str() or int() transformation to ensure it's not a MagicMock or other object
             new_resume = getattr(data, 'tailored_resume_html', None)
@@ -466,11 +494,11 @@ Please provide the updated content in the required structured format.
                 "matchScore": job.match_score
             }
         else:
-            print("ERROR: extract_agent_data returned None or empty result")
+            log_error("extract_agent_data returned None or empty result")
             raise HTTPException(status_code=500, detail="Failed to get data from agent")
             
     except Exception as e:
         import traceback
-        print(f"ERROR: Regeneration failed: {str(e)}")
+        log_error(f"Regeneration failed: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Regeneration failed: {str(e)}")

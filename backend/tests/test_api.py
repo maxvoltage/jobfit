@@ -93,7 +93,8 @@ class TestAnalyzeJob:
             cover_letter_html="<p>Cover letter</p>",
             company_name="Test Company",
             job_title="Software Engineer",
-            key_improvements=["Added Python skills", "Emphasized leadership"]
+            key_improvements=["Added Python skills", "Emphasized leadership"],
+            extracted_job_description="Cleaned JD content"
         )
         
         with patch('main.resume_agent.run', new_callable=AsyncMock) as mock_agent:
@@ -257,7 +258,8 @@ class TestRegenerateJob:
             cover_letter_html="<p>Updated Cover letter</p>",
             company_name="Test Company",
             job_title="Software Engineer",
-            key_improvements=["Even more Python", "AWS certification added"]
+            key_improvements=["Even more Python", "AWS certification added"],
+            extracted_job_description="Updated JD content"
         )
 
         with patch('main.resume_agent_no_tools.run', new_callable=AsyncMock) as mock_agent:
@@ -281,7 +283,8 @@ class TestRegenerateJob:
             tailored_resume_html="<h1>Regenerated</h1>",
             cover_letter_html="<p>Regenerated</p>",
             company_name="Test Company",
-            job_title="Software Engineer"
+            job_title="Software Engineer",
+            extracted_job_description="Regenerated JD"
         )
 
         with patch('main.resume_agent_no_tools.run', new_callable=AsyncMock) as mock_agent:
@@ -314,9 +317,12 @@ class TestRegenerateJob:
     async def test_regenerate_job_missing_data(self, client, sample_job):
         """Test regeneration when agent returns incomplete data."""
         mock_result = MagicMock()
-        # Mocking an object with no .data and no fallback attributes
-        # This should trigger our 'extract_agent_data' logic path
-        mock_result.data = None
+        # Use a simple object for data that has no attributes, 
+        # so getattr(data, 'match_score', default) returns the default.
+        class EmptyData:
+            pass
+            
+        mock_result.data = EmptyData()
         
         with patch('main.resume_agent_no_tools.run', new_callable=AsyncMock) as mock_agent:
             mock_agent.return_value = mock_result

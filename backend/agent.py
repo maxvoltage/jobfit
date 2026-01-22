@@ -32,16 +32,21 @@ class ResumeMatchResult(BaseModel):
         default_factory=list,
         description="List of key improvements made to the resume"
     )
+    extracted_job_description: str = Field(
+        ...,
+        description="The clean, extracted job description text (markdown) from the source (URL or text), removing navigation, headers, and footers."
+    )
 
 # System prompt for the agent
 SYSTEM_PROMPT = """You are an expert Resume Writer and Career Coach with deep expertise in ATS optimization and job matching.
 
-Your goal is to analyze a user's resume against a specific job description and produce:
+Your goal is to analyze a user's resume against a specific job description (often scraped from a noisy URL) and produce:
 1. A tailored resume optimized for the job
 2. A compelling cover letter
 3. Extraction of the company name and job title
-4. Both formatted as clean, professional HTML for PDF generation
-5. **Language Consistency**: If the Resume and Job Description are in different languages, you MUST produce the tailored resume and cover letter in the **language of the Job Description**. This ensures the recruiter and ATS can properly read and rank your application.
+4. **Extraction of the clean job description**: Distill the actual job requirements, responsibilities, and benefits from the raw scraped text, removing irrelevant website navigation, ads, or legal footers.
+5. Both formatted as clean, professional HTML for PDF generation
+6. **Language Consistency**: If the Resume and Job Description are in different languages, you MUST produce the tailored resume and cover letter in the **language of the Job Description**. This ensures the recruiter and ATS can properly read and rank your application.
 
 When tailoring a resume:
 1. **Preserve the truth**: Never fabricate experience or skills. Only reframe and emphasize existing qualifications.
