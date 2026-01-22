@@ -1,6 +1,6 @@
 from sqlalchemy import ForeignKey, String, Integer, Boolean, DateTime, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, List
 import enum
 from database import Base
@@ -33,7 +33,7 @@ class Job(Base):
     tailored_resume: Mapped[str]
     match_score: Mapped[int]
     status: Mapped[JobStatus] = mapped_column(SQLEnum(JobStatus), default=JobStatus.todo)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     # Relationship to Resume
     resume: Mapped["Resume"] = relationship(back_populates="jobs")

@@ -139,7 +139,7 @@ Always use the scrape_job_description tool to fetch the full job posting before 
 # Initialize the agent
 resume_agent = Agent(
     LLM_NAME,  # Loaded from .env file
-    result_type=ResumeMatchResult,
+    output_type=ResumeMatchResult,
     system_prompt=SYSTEM_PROMPT,
     tools=[scrape_job_description],
 )

@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
-import os
+import config
 
-# Local SQLite database for development
-SQLALCHEMY_DATABASE_URL = "sqlite:///./jobfit.db"
+# Use DATABASE_URL from config
+SQLALCHEMY_DATABASE_URL = config.DATABASE_URL
 
 # connect_args={"check_same_thread": False} is required only for SQLite
 engine = create_engine(

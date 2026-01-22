@@ -63,8 +63,13 @@ Build a local-first AI agent that helps users tailor their resumes to specific j
 ## 4. Engineering Standards
 
 ### Testing
-- **Unit:** Test PDF extraction (with a dummy PDF) and Match Score logic.
-- **Integration:** Test the full `/analyze` flow (mocking the external HTTP calls to Jina and OpenAI).
+- **Patterns:**
+    - **In-Memory DB:** Use `sqlite:///:memory:` with `StaticPool` for fast, isolated test runs.
+    - **Transactional Isolation:** Wrap tests in a `db_session` fixture that rolls back changes after each test.
+    - **Dependency Injection:** Use `app.dependency_overrides` to inject test sessions into FastAPI endpoints.
+    - **Fixture-Driven:** Keep `conftest.py` for shared fixtures (`client`, `db_session`, `sample_data`).
+- **Unit:** Test PDF extraction and scraper logic with mocks.
+- **Integration:** Test end-to-end API flows (e.g., `/analyze`) by mocking external LLM responses.
 
 ### CI/CD
 - GitHub Actions: Run `ruff check` and `pytest` on push.
