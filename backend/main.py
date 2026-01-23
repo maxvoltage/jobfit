@@ -341,7 +341,7 @@ async def update_job(job_id: int, request: UpdateJobRequest, db: Session = Depen
     return job
 
 
-@app.post("/api/jobs/{job_id}/pdf")
+@app.get("/api/jobs/{job_id}/pdf")
 async def generate_pdf(
     job_id: int,
     pdf_type: str = "resume",  # "resume" or "cover"
@@ -354,24 +354,44 @@ async def generate_pdf(
         raise HTTPException(status_code=404, detail="Job not found")
 
     # Get the HTML content
-    html_content = job.tailored_resume
+    if pdf_type == "cover":
+        html_content = job.cover_letter
+        log_debug(f"Generating PDF for cover letter (Job ID: {job_id})")
+    else:
+        html_content = job.tailored_resume
+        log_debug(f"Generating PDF for tailored resume (Job ID: {job_id})")
 
     if not html_content:
-        raise HTTPException(status_code=400, detail="No content available for PDF generation")
+        log_error(f"PDF generation aborted: No {pdf_type} content found for Job ID {job_id}")
+        raise HTTPException(status_code=400, detail=f"No {pdf_type} content available for PDF generation")
 
     # Generate PDF using WeasyPrint
     try:
         pdf_bytes = HTML(string=html_content).write_pdf()
 
         # Return as downloadable file
-        filename = f"{job.company}_{job.title}_{pdf_type}.pdf".replace(" ", "_")
+        import re
+
+        raw_filename = f"{job.company}_{job.title}_{pdf_type}.pdf"
+        # Replace spaces and other special characters with underscores
+        safe_filename = re.sub(r"[^\w\.\-]", "_", raw_filename)
+        log_debug(f"Successfully generated PDF: {safe_filename} ({len(pdf_bytes)} bytes)")
 
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_filename}"',
+                "Content-Length": str(len(pdf_bytes)),
+                "Access-Control-Expose-Headers": "Content-Disposition",
+            },
         )
+
     except Exception as e:
+        log_error(f"PDF generation failed for Job ID {job_id}: {str(e)}")
+        import traceback
+
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 

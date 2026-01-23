@@ -177,21 +177,37 @@ class TestGeneratePDF:
     """Test PDF generation endpoint."""
 
     def test_generate_pdf_success(self, client, sample_job):
-        """Test successful PDF generation."""
+        """Test successful PDF generation for resume."""
         with patch("main.HTML") as mock_html:
             mock_pdf_instance = MagicMock()
             mock_pdf_instance.write_pdf.return_value = b"PDF content"
             mock_html.return_value = mock_pdf_instance
 
-            response = client.post(f"/api/jobs/{sample_job.id}/pdf")
+            response = client.get(f"/api/jobs/{sample_job.id}/pdf")
 
             assert response.status_code == 200
             assert response.headers["content-type"] == "application/pdf"
             assert "attachment" in response.headers["content-disposition"]
+            assert "resume" in response.headers["content-disposition"]
+
+    def test_generate_pdf_cover_letter_success(self, client, sample_job):
+        """Test successful PDF generation for cover letter."""
+        with patch("main.HTML") as mock_html:
+            mock_pdf_instance = MagicMock()
+            mock_pdf_instance.write_pdf.return_value = b"PDF content"
+            mock_html.return_value = mock_pdf_instance
+
+            # Updated query param syntax for client.get
+            response = client.get(f"/api/jobs/{sample_job.id}/pdf", params={"pdf_type": "cover"})
+
+            assert response.status_code == 200
+            assert response.headers["content-type"] == "application/pdf"
+            assert "attachment" in response.headers["content-disposition"]
+            assert "cover" in response.headers["content-disposition"]
 
     def test_generate_pdf_job_not_found(self, client):
         """Test PDF generation for non-existent job."""
-        response = client.post("/api/jobs/9999/pdf")
+        response = client.get("/api/jobs/9999/pdf")
 
         assert response.status_code == 404
 
@@ -213,10 +229,10 @@ class TestGeneratePDF:
         db_session.commit()
         db_session.refresh(job)
 
-        response = client.post(f"/api/jobs/{job.id}/pdf")
+        response = client.get(f"/api/jobs/{job.id}/pdf")
 
         assert response.status_code == 400
-        assert "No content" in response.json()["detail"]
+        assert "content available" in response.json()["detail"]
 
 
 class TestDeleteJob:

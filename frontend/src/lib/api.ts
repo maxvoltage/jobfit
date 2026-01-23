@@ -193,17 +193,35 @@ export async function getMasterResume(): Promise<Resume | undefined> {
 
 export async function downloadJobPdf(jobId: string, type: 'resume' | 'cover' = 'resume') {
   const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/pdf?pdf_type=${type}`, {
-    method: 'POST',
+    method: 'GET',
   });
 
-  if (!response.ok) throw new Error('Failed to generate PDF');
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to generate PDF' }));
+    throw new Error(error.detail || 'Failed to generate PDF');
+  }
 
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `application_${jobId}_${type}.pdf`;
+
+  // Try to get filename from Content-Disposition if possible, otherwise use fallback
+  const contentDisposition = response.headers.get('Content-Disposition');
+  let fileName = `application_${jobId}_${type}.pdf`;
+  if (contentDisposition && contentDisposition.includes('filename=')) {
+    const match = contentDisposition.match(/filename="?([^"]+)"?/);
+    if (match && match[1]) fileName = match[1];
+  }
+
+  a.download = fileName;
   document.body.appendChild(a);
   a.click();
-  window.URL.revokeObjectURL(url);
+
+  // Cleanup
+  setTimeout(() => {
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }, 100);
 }
+
