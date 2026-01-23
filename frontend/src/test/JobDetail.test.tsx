@@ -45,12 +45,12 @@ describe('JobDetail Page', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(api.getApplication).mockResolvedValue(mockJob as any);
+        vi.mocked(api.getApplication).mockResolvedValue(mockJob as unknown as JobApplication);
     });
 
     it('should load and display job details', async () => {
         render(
-            <MemoryRouter initialEntries={['/job/1']}>
+            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
                     <Route path="/job/:id" element={<JobDetail />} />
                 </Routes>
@@ -68,10 +68,10 @@ describe('JobDetail Page', () => {
 
     it('should toggle applied status when checkbox is clicked', async () => {
         const user = userEvent.setup();
-        vi.mocked(api.updateApplication).mockResolvedValue({ ...mockJob, applied: true, status: 'applied' } as any);
+        vi.mocked(api.updateApplication).mockResolvedValue({ ...mockJob, applied: true, status: 'applied' } as unknown as JobApplication);
 
         render(
-            <MemoryRouter initialEntries={['/job/1']}>
+            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
                     <Route path="/job/:id" element={<JobDetail />} />
                 </Routes>
@@ -95,11 +95,11 @@ describe('JobDetail Page', () => {
     it('should revert applied status when unchecking', async () => {
         const user = userEvent.setup();
         const appliedJob = { ...mockJob, applied: true, status: 'applied' };
-        vi.mocked(api.getApplication).mockResolvedValue(appliedJob as any);
-        vi.mocked(api.updateApplication).mockResolvedValue({ ...mockJob, applied: false, status: 'todo' } as any);
+        vi.mocked(api.getApplication).mockResolvedValue(appliedJob as unknown as JobApplication);
+        vi.mocked(api.updateApplication).mockResolvedValue({ ...mockJob, applied: false, status: 'todo' } as unknown as JobApplication);
 
         render(
-            <MemoryRouter initialEntries={['/job/1']}>
+            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
                     <Route path="/job/:id" element={<JobDetail />} />
                 </Routes>
@@ -123,7 +123,7 @@ describe('JobDetail Page', () => {
     it('should switch between resume and cover letter tabs', async () => {
         const user = userEvent.setup();
         render(
-            <MemoryRouter initialEntries={['/job/1']}>
+            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
                     <Route path="/job/:id" element={<JobDetail />} />
                 </Routes>
@@ -152,7 +152,7 @@ describe('JobDetail Page', () => {
         });
 
         render(
-            <MemoryRouter initialEntries={['/job/1']}>
+            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
                     <Route path="/job/:id" element={<JobDetail />} />
                 </Routes>
@@ -182,7 +182,7 @@ describe('JobDetail Page', () => {
     it('should call downloadJobPdf with correct type when download button is clicked', async () => {
         const user = userEvent.setup();
         render(
-            <MemoryRouter initialEntries={['/job/1']}>
+            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
                     <Route path="/job/:id" element={<JobDetail />} />
                 </Routes>

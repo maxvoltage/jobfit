@@ -108,10 +108,10 @@ export default function UploadResume() {
                 description: 'Resume processed successfully',
             });
             setTimeout(() => navigate('/'), 2000);
-        } catch (error: any) {
+        } catch (error) {
             toast({
                 title: 'Process failed',
-                description: error.message || 'There was an error processing your resume',
+                description: error instanceof Error ? error.message : 'There was an error processing your resume',
                 variant: 'destructive',
             });
         } finally {
@@ -147,7 +147,7 @@ export default function UploadResume() {
                                 Your resume has been processed. Redirecting to dashboard...
                             </p>
                             <Button onClick={() => navigate('/')} variant="outline">
-                                Go Now
+                                Go to Dashboard
                             </Button>
                         </div>
                     ) : (

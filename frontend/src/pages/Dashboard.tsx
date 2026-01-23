@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Briefcase, TrendingUp, TrendingDown, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -24,19 +24,36 @@ export default function Dashboard() {
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadApplications();
-    loadMasterResume();
-  }, []);
-
-  const loadMasterResume = async () => {
+  const loadMasterResume = useCallback(async () => {
     try {
       const resume = await getMasterResume();
       if (resume) setMasterResume(resume);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to load master resume:', error);
     }
-  };
+  }, []);
+
+  const loadApplications = useCallback(async () => {
+    try {
+      const data = await getApplications();
+      setApplications(data);
+    } catch (error: unknown) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load applications',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    loadApplications();
+    loadMasterResume();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   useEffect(() => {
     if (activeFilter === 'all') {
@@ -48,21 +65,6 @@ export default function Dashboard() {
     }
     setSearchParams(searchParams, { replace: true });
   }, [activeFilter, searchParams, setSearchParams]);
-
-  const loadApplications = async () => {
-    try {
-      const data = await getApplications();
-      setApplications(data);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load applications',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleFilterChange = (filter: FilterType) => {
     setActiveFilter(filter);

@@ -13,7 +13,9 @@ describe('API Utils', () => {
         // Mock document.createElement and body.appendChild for download logic
         vi.spyOn(document, 'createElement');
         vi.spyOn(document.body, 'appendChild');
+        vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => { });
     });
+
 
     it('downloadJobPdf should use GET method', async () => {
         const mockResponse = {
@@ -23,7 +25,8 @@ describe('API Utils', () => {
                 get: vi.fn().mockReturnValue('attachment; filename="test.pdf"')
             }
         };
-        vi.mocked(fetch).mockResolvedValue(mockResponse as any);
+        vi.mocked(fetch).mockResolvedValue(mockResponse as unknown as Response);
+
 
         await downloadJobPdf('123', 'resume');
 

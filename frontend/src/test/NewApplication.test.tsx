@@ -45,10 +45,11 @@ describe('NewApplication Auto-save and Redirect', () => {
             cover_letter: '<html>Letter</html>'
         };
 
-        vi.mocked(api.analyzeJobDescription).mockResolvedValue(mockResult as any);
+        vi.mocked(api.analyzeJobDescription).mockResolvedValue(mockResult as unknown as (api.AnalyzeJobResponse & { id: string }));
+
 
         render(
-            <MemoryRouter>
+            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <NewApplication />
             </MemoryRouter>
         );
@@ -90,7 +91,7 @@ describe('NewApplication Auto-save and Redirect', () => {
         vi.mocked(api.getResumes).mockResolvedValue(resumes);
 
         render(
-            <MemoryRouter>
+            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <NewApplication />
             </MemoryRouter>
         );

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, RefreshCw, Building2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,13 +33,7 @@ export default function JobDetail() {
   const [regenPrompt, setRegenPrompt] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      loadApplication(id);
-    }
-  }, [id]);
-
-  const loadApplication = async (appId: string) => {
+  const loadApplication = useCallback(async (appId: string) => {
     try {
       const data = await getApplication(appId);
       if (data) {
@@ -61,7 +55,17 @@ export default function JobDetail() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate, toast]);
+
+  useEffect(() => {
+    if (id) {
+      loadApplication(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+
+
 
   const handleAppliedChange = async (checked: boolean) => {
     if (!id || !application) return;
@@ -100,13 +104,14 @@ export default function JobDetail() {
         description: 'Content has been regenerated successfully',
       });
       setRegenPrompt('');
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to regenerate content',
+        description: error instanceof Error ? error.message : 'Failed to regenerate content',
         variant: 'destructive',
       });
     } finally {
+
       setIsRegenerating(false);
     }
   };

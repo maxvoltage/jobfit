@@ -35,7 +35,7 @@ describe('UploadResume', () => {
         it('should visually change state when dragging over', async () => {
             const user = userEvent.setup();
             render(
-                <MemoryRouter>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                     <UploadResume />
                 </MemoryRouter>
             );
@@ -53,7 +53,7 @@ describe('UploadResume', () => {
             // Drag over
             await waitFor(() => {
                 render(
-                    <MemoryRouter>
+                    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                         <UploadResume />
                     </MemoryRouter>
                 );
@@ -74,7 +74,7 @@ describe('UploadResume', () => {
             });
 
             render(
-                <MemoryRouter>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                     <UploadResume />
                 </MemoryRouter>
             );

@@ -43,13 +43,14 @@ describe('Dashboard Page', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         localStorage.clear();
-        vi.mocked(api.getApplications).mockResolvedValue(mockApplications as any);
-        vi.mocked(api.getMasterResume).mockResolvedValue({ id: 1, name: 'Master Resume', is_master: true } as any);
+        vi.mocked(api.getApplications).mockResolvedValue(mockApplications as unknown as JobApplication[]);
+        vi.mocked(api.getMasterResume).mockResolvedValue({ id: 1, name: 'Master Resume', is_master: true } as unknown as Resume);
     });
+
 
     it('should load and display applications', async () => {
         render(
-            <MemoryRouter>
+            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Dashboard />
             </MemoryRouter>
         );
@@ -66,7 +67,7 @@ describe('Dashboard Page', () => {
     it('should filter applications when clicking stats cards', async () => {
         const user = userEvent.setup();
         render(
-            <MemoryRouter>
+            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Dashboard />
             </MemoryRouter>
         );
@@ -93,7 +94,7 @@ describe('Dashboard Page', () => {
         vi.mocked(api.deleteApplication).mockResolvedValue(undefined);
 
         render(
-            <MemoryRouter>
+            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Dashboard />
             </MemoryRouter>
         );

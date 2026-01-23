@@ -2,8 +2,21 @@ import { JobApplication, AnalyzeJobResponse, Resume } from '@/types';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
+interface BackendJob {
+  id: number;
+  created_at: string;
+  company: string;
+  title: string;
+  match_score: number;
+  url: string;
+  original_jd: string;
+  tailored_resume: string;
+  cover_letter: string;
+  status: string;
+}
+
 // Helper to normalize backend Job to frontend JobApplication
-const normalizeJob = (job: any): JobApplication => ({
+const normalizeJob = (job: BackendJob): JobApplication => ({
   id: job.id.toString(),
   dateAdded: job.created_at || new Date().toISOString().split('T')[0],
   companyName: job.company,
@@ -13,9 +26,10 @@ const normalizeJob = (job: any): JobApplication => ({
   jobDescription: job.original_jd || '',
   tailoredResume: job.tailored_resume,
   coverLetter: job.cover_letter, // Backend needs to return this
-  status: job.status as any,
+  status: job.status as JobApplication['status'],
   applied: job.status === 'applied',
 });
+
 
 // API Functions
 export async function getApplications(): Promise<JobApplication[]> {
@@ -178,13 +192,14 @@ export async function getResumes(): Promise<Resume[]> {
   const response = await fetch(`${API_BASE_URL}/resumes`);
   if (!response.ok) throw new Error('Failed to fetch resumes');
   const data = await response.json();
-  return data.map((r: any) => ({
+  return data.map((r: { id: number; name: string; preview: string; is_master: boolean }) => ({
     id: r.id,
     name: r.name,
     content: r.preview || '',
     is_master: r.is_master,
   }));
 }
+
 
 export async function getMasterResume(): Promise<Resume | undefined> {
   const resumes = await getResumes();
