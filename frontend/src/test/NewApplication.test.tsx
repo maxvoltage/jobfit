@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import NewApplication from '../pages/NewApplication';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import * as api from '../lib/api';
 
 // Mock the API and toast
@@ -48,9 +48,9 @@ describe('NewApplication Auto-save and Redirect', () => {
         vi.mocked(api.analyzeJobDescription).mockResolvedValue(mockResult as any);
 
         render(
-            <BrowserRouter>
+            <MemoryRouter>
                 <NewApplication />
-            </BrowserRouter>
+            </MemoryRouter>
         );
 
         // Wait for resumes to load
@@ -90,10 +90,11 @@ describe('NewApplication Auto-save and Redirect', () => {
         vi.mocked(api.getResumes).mockResolvedValue(resumes);
 
         render(
-            <BrowserRouter>
+            <MemoryRouter>
                 <NewApplication />
-            </BrowserRouter>
+            </MemoryRouter>
         );
+
 
         // Wait for resumes to load and check selected value in trigger
         await waitFor(() => {

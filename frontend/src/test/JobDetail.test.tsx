@@ -119,4 +119,88 @@ describe('JobDetail Page', () => {
             expect(checkbox).not.toBeChecked();
         });
     });
+
+    it('should switch between resume and cover letter tabs', async () => {
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/job/1']}>
+                <Routes>
+                    <Route path="/job/:id" element={<JobDetail />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => screen.getByText('Test Company'));
+
+        // Initially on resume tab
+        expect(screen.getByRole('tab', { name: /tailored resume/i })).toHaveAttribute('data-state', 'active');
+
+        // Click cover letter tab
+        const coverTab = screen.getByRole('tab', { name: /cover letter/i });
+        await user.click(coverTab);
+
+        expect(coverTab).toHaveAttribute('data-state', 'active');
+        expect(screen.getByRole('tab', { name: /tailored resume/i })).toHaveAttribute('data-state', 'inactive');
+    });
+
+    it('should handle content regeneration', async () => {
+        const user = userEvent.setup();
+        vi.mocked(api.regenerateContent).mockResolvedValue({
+            resume: '<html>Regenerated Resume</html>',
+            coverLetter: '<html>Regenerated Cover Letter</html>',
+            matchScore: 95
+        });
+
+        render(
+            <MemoryRouter initialEntries={['/job/1']}>
+                <Routes>
+                    <Route path="/job/:id" element={<JobDetail />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => screen.getByText('Test Company'));
+
+        // Open regenerate dialog
+        const regenButton = screen.getByRole('button', { name: /regenerate/i });
+        await user.click(regenButton);
+
+        // Type prompt and start regeneration
+        const textarea = screen.getByPlaceholderText(/enter your instructions here/i);
+        await user.type(textarea, 'Better resume please');
+
+        const startButton = screen.getByRole('button', { name: /start regeneration/i });
+        await user.click(startButton);
+
+        expect(api.regenerateContent).toHaveBeenCalledWith('1', 'Better resume please');
+
+        await waitFor(() => {
+            expect(screen.getByText('95%')).toBeInTheDocument();
+        });
+    });
+
+    it('should call downloadJobPdf with correct type when download button is clicked', async () => {
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/job/1']}>
+                <Routes>
+                    <Route path="/job/:id" element={<JobDetail />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => screen.getByText('Test Company'));
+
+        // Download resume (default tab)
+        const downloadButton = screen.getByRole('button', { name: /download pdf/i });
+        await user.click(downloadButton);
+        expect(api.downloadJobPdf).toHaveBeenCalledWith('1', 'resume');
+
+        // Switch to cover letter and download
+        const coverTab = screen.getByRole('tab', { name: /cover letter/i });
+        await user.click(coverTab);
+        await user.click(downloadButton);
+        expect(api.downloadJobPdf).toHaveBeenCalledWith('1', 'cover');
+    });
 });
+

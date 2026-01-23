@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import UploadResume from '../pages/UploadResume';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import * as api from '../lib/api';
 
 // Mock the API and toast
@@ -35,9 +35,9 @@ describe('UploadResume', () => {
         it('should visually change state when dragging over', async () => {
             const user = userEvent.setup();
             render(
-                <BrowserRouter>
+                <MemoryRouter>
                     <UploadResume />
-                </BrowserRouter>
+                </MemoryRouter>
             );
 
             // Switch to File tab first since URL is default
@@ -53,10 +53,11 @@ describe('UploadResume', () => {
             // Drag over
             await waitFor(() => {
                 render(
-                    <BrowserRouter>
+                    <MemoryRouter>
                         <UploadResume />
-                    </BrowserRouter>
+                    </MemoryRouter>
                 );
+
             });
             // Simplified check as classNames can be tricky with cn()
         });
@@ -73,9 +74,9 @@ describe('UploadResume', () => {
             });
 
             render(
-                <BrowserRouter>
+                <MemoryRouter>
                     <UploadResume />
-                </BrowserRouter>
+                </MemoryRouter>
             );
 
             // URL tab is default, so no need to click it

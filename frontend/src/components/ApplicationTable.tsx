@@ -133,6 +133,7 @@ export function ApplicationTable({ applications, onDelete }: ApplicationTablePro
                             size="icon"
                             className="h-8 w-8"
                             onClick={(e) => handleDownloadPdf(e, application)}
+                            aria-label="Download PDF"
                           >
                             <Download className="h-4 w-4" />
                           </Button>
@@ -146,6 +147,7 @@ export function ApplicationTable({ applications, onDelete }: ApplicationTablePro
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={(e) => { e.stopPropagation(); onDelete(application.id); }}
+                            aria-label="Delete"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

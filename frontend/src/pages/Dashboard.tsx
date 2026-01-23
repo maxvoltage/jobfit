@@ -174,11 +174,13 @@ export default function Dashboard() {
             <button
               key={stat.label}
               onClick={() => handleFilterChange(stat.key)}
+              aria-label={stat.label}
               className={cn(
                 "card-elevated p-4 text-left transition-all hover:scale-[1.02]",
                 isActive && "ring-2 ring-primary"
               )}
             >
+
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
