@@ -2,6 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { Plus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from './ThemeToggle';
+
 
 export function Header() {
   const location = useLocation();
@@ -19,38 +21,43 @@ export function Header() {
             </span>
           </Link>
 
-          <nav className="flex items-center gap-1">
-            <Button
-              asChild
-              variant={location.pathname === '/upload' ? 'secondary' : 'outline'}
-              size="sm"
-              className={cn(
-                'gap-2',
-                location.pathname === '/upload' && 'bg-secondary text-foreground'
-              )}
-            >
-              <Link to="/upload">
-                <Upload className="h-4 w-4" />
-                Upload My Resume
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant={location.pathname === '/new' ? 'secondary' : 'ghost'}
-              size="sm"
-              className={cn(
-                'gap-2',
-                location.pathname === '/new' && 'bg-secondary text-foreground'
-              )}
-            >
-              <Link to="/new">
-                <Plus className="h-4 w-4" />
-                New Application
-              </Link>
-            </Button>
+          <nav className="flex items-center gap-4">
+            <ThemeToggle />
+            <div className="flex items-center gap-1 border-l pl-4">
+
+              <Button
+                asChild
+                variant={location.pathname === '/upload' ? 'secondary' : 'outline'}
+                size="sm"
+                className={cn(
+                  'gap-2',
+                  location.pathname === '/upload' && 'bg-secondary text-foreground'
+                )}
+              >
+                <Link to="/upload">
+                  <Upload className="h-4 w-4" />
+                  Upload My Resume
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant={location.pathname === '/new' ? 'secondary' : 'ghost'}
+                size="sm"
+                className={cn(
+                  'gap-2',
+                  location.pathname === '/new' && 'bg-secondary text-foreground'
+                )}
+              >
+                <Link to="/new">
+                  <Plus className="h-4 w-4" />
+                  New Application
+                </Link>
+              </Button>
+            </div>
           </nav>
         </div>
       </div>
     </header>
+
   );
 }

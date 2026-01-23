@@ -1,4 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils';
+
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, RefreshCw, Building2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -292,15 +296,42 @@ export default function JobDetail() {
 }
 
 function MarkdownPreview({ content }: { content: string }) {
+  const { resolvedTheme } = useTheme();
   // Check if content is HTML
   const isHtml = content.trim().startsWith('<!DOCTYPE html>') || content.trim().startsWith('<html');
 
   if (isHtml) {
+    let finalContent = content;
+    if (resolvedTheme === 'dark') {
+      const darkStyles = `
+        <style>
+          :root { color-scheme: dark; }
+          body { 
+            background-color: #111827 !important; 
+            color: #f3f4f6 !important; 
+            margin: 0;
+            padding: 1rem;
+          }
+          /* Basic reachability for generic HTML */
+          td, th, p, span, li, h1, h2, h3, h4, h5, h6 { color: #f3f4f6 !important; }
+          a { color: #60a5fa !important; }
+        </style>
+      `;
+      if (content.includes('<head>')) {
+        finalContent = content.replace('<head>', `<head>${darkStyles}`);
+      } else {
+        finalContent = darkStyles + content;
+      }
+    }
+
     return (
       <div className="prose max-w-none dark:prose-invert">
         <iframe
-          srcDoc={content}
-          className="w-full h-[600px] border-0 bg-white"
+          srcDoc={finalContent}
+          className={cn(
+            "w-full h-[600px] border-0 rounded-md",
+            resolvedTheme === 'dark' ? "bg-[#111827]" : "bg-white"
+          )}
           title="Resume Preview"
         />
       </div>
@@ -313,6 +344,7 @@ function MarkdownPreview({ content }: { content: string }) {
     </div>
   );
 }
+
 
 function EmptyState({ message }: { message: string }) {
   return (
