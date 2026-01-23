@@ -329,10 +329,12 @@ async def update_job(job_id: int, request: UpdateJobRequest, db: Session = Depen
 
     if request.status is not None:
         job.status = request.status
-    if request.applied is not None:
-        # Map boolean applied to status if needed, or keep separate
+    elif request.applied is not None:
         if request.applied:
             job.status = models.JobStatus.applied
+        elif job.status == models.JobStatus.applied:
+            # If unticked and was previously 'applied', revert to 'todo'
+            job.status = models.JobStatus.todo
 
     db.commit()
     db.refresh(job)

@@ -339,3 +339,58 @@ class TestRegenerateJob:
 
             assert response.status_code == 200
             # Returns original sample_job values since new ones are None
+
+
+class TestUpdateJob:
+    """Test job update endpoint."""
+
+    def test_update_job_status(self, client, sample_job):
+        """Test updating job status directly."""
+        payload = {"status": "interview"}
+        response = client.patch(f"/api/jobs/{sample_job.id}", json=payload)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "interview"
+
+    def test_toggle_applied_true(self, client, sample_job):
+        """Test setting applied to true."""
+        # Ensure it starts as todo (via fixture)
+        assert sample_job.status == JobStatus.todo
+
+        payload = {"applied": True}
+        response = client.patch(f"/api/jobs/{sample_job.id}", json=payload)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == JobStatus.applied
+
+    def test_toggle_applied_false_reverts_to_todo(self, client, db_session, sample_resume):
+        """Test that unticking applied reverts status to todo."""
+        # Create a job that is already applied
+        job = Job(
+            resume_id=sample_resume.id,
+            url="https://example.com/job",
+            company="Test Company",
+            title="Engineer",
+            original_jd="JD",
+            tailored_resume="HTML",
+            cover_letter="HTML",
+            match_score=90,
+            status=JobStatus.applied,
+        )
+        db_session.add(job)
+        db_session.commit()
+        db_session.refresh(job)
+
+        payload = {"applied": False}
+        response = client.patch(f"/api/jobs/{job.id}", json=payload)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == JobStatus.todo
+
+    def test_update_job_not_found(self, client):
+        """Test updating a non-existent job."""
+        response = client.patch("/api/jobs/9999", json={"status": "applied"})
+        assert response.status_code == 404
