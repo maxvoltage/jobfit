@@ -1,14 +1,19 @@
-from sqlalchemy import ForeignKey, String, Integer, Boolean, DateTime, Enum as SQLEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import datetime, UTC
-from typing import Optional, List
 import enum
+from datetime import UTC, datetime
+from typing import List, Optional
+
+from sqlalchemy import DateTime, ForeignKey
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from database import Base
+
 
 class JobStatus(str, enum.Enum):
     todo = "todo"
     applied = "applied"
     interview = "interview"
+
 
 class Resume(Base):
     __tablename__ = "resumes"
@@ -17,9 +22,10 @@ class Resume(Base):
     name: Mapped[str]
     content: Mapped[str]
     is_master: Mapped[bool] = mapped_column(default=False)
-    
+
     # Relationship to Jobs
     jobs: Mapped[List["Job"]] = relationship(back_populates="resume", cascade="all, delete-orphan")
+
 
 class Job(Base):
     __tablename__ = "jobs"

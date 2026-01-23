@@ -33,6 +33,11 @@ markers = [
     "integration: marks tests as integration tests that use real external resources (PDFs, HTTP calls)",
 ]
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 120
@@ -43,3 +48,6 @@ target-version = "py313"
 # Enable Pyflakes (F), pycodestyle (E, W), isort (I)
 select = ["E", "F", "W", "I"]
 ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"agent.py" = ["E501"]

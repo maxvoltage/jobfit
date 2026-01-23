@@ -1,41 +1,33 @@
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
-from tools import scrape_job_description
+
 from config import LLM_NAME
+from tools import scrape_job_description
+
 
 class ResumeMatchResult(BaseModel):
     """Structured output from the resume tailoring agent."""
-    
+
     match_score: int = Field(
-        ..., 
-        ge=0, 
-        le=100, 
-        description="Match score between 0-100 indicating how well the resume fits the job"
+        ..., ge=0, le=100, description="Match score between 0-100 indicating how well the resume fits the job"
     )
     tailored_resume_html: str = Field(
-        ..., 
-        description="The rewritten resume content in clean HTML format, ready for PDF conversion with WeasyPrint"
+        ..., description="The rewritten resume content in clean HTML format, ready for PDF conversion with WeasyPrint"
     )
     cover_letter_html: str = Field(
-        ...,
-        description="A tailored cover letter in clean HTML format, ready for PDF conversion with WeasyPrint"
+        ..., description="A tailored cover letter in clean HTML format, ready for PDF conversion with WeasyPrint"
     )
-    company_name: str = Field(
-        ...,
-        description="The name of the company from the job description"
-    )
-    job_title: str = Field(
-        ...,
-        description="The job title from the job description"
-    )
-    key_improvements: list[str] = Field(
-        default_factory=list,
-        description="List of key improvements made to the resume"
-    )
+    company_name: str = Field(..., description="The name of the company from the job description")
+    job_title: str = Field(..., description="The job title from the job description")
+    key_improvements: list[str] = Field(default_factory=list, description="List of key improvements made to the resume")
     extracted_job_description: str = Field(
         ...,
-        description="The clean, extracted job description text (markdown) from the source (URL or text), removing navigation, headers, and footers."
+        description=(
+            "The clean, extracted job description text (markdown) from the source (URL or text), "
+            "removing navigation, headers, and footers."
+        ),
     )
+
 
 # System prompt for the agent
 SYSTEM_PROMPT = """You are an expert Resume Writer and Career Coach with deep expertise in ATS optimization and job matching.
@@ -123,10 +115,10 @@ Example resume HTML structure:
 <body>
     <h1>Full Name</h1>
     <p>Email | Phone | Location | LinkedIn</p>
-    
+
     <h2>Professional Summary</h2>
     <p>Brief summary highlighting key qualifications...</p>
-    
+
     <h2>Experience</h2>
     <h3>Job Title - Company Name</h3>
     <p><em>Start Date - End Date</em></p>
@@ -134,11 +126,11 @@ Example resume HTML structure:
         <li>Achievement with metrics</li>
         <li>Another achievement</li>
     </ul>
-    
+
     <h2>Education</h2>
     <h3>Degree - University Name</h3>
     <p><em>Graduation Year</em></p>
-    
+
     <h2>Skills</h2>
     <ul>
         <li>Skill category: specific skills</li>

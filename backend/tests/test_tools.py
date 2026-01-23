@@ -1,9 +1,9 @@
-import pytest
-import io
-import os
-from unittest.mock import AsyncMock, patch, MagicMock
-from tools import extract_text_from_pdf, scrape_job_description
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
+
+from tools import extract_text_from_pdf, scrape_job_description
 
 
 class TestExtractTextFromPDF:
@@ -11,45 +11,45 @@ class TestExtractTextFromPDF:
 
     def test_handles_extraction_exception(self):
         """Verify error handling when MarkItDown and fallback fail."""
-        with patch('tools.md_converter.convert') as mock_convert:
+        with patch("tools.md_converter.convert") as mock_convert:
             mock_convert.side_effect = ValueError("Unsupported PDF version")
-            
-            with patch('tools.fitz.open') as mock_fitz:
+
+            with patch("tools.fitz.open") as mock_fitz:
                 mock_fitz.side_effect = Exception("Fitz failed")
-                
+
                 result = extract_text_from_pdf(b"fake pdf")
-                
+
                 # Test our error handling logic
                 assert result.startswith("Error:")
                 assert "extract text" in result.lower()
 
     def test_returns_markdown_from_converter(self):
         """Verify we correctly extract the markdown attribute."""
-        with patch('tools.md_converter.convert') as mock_convert:
+        with patch("tools.md_converter.convert") as mock_convert:
             mock_result = MagicMock()
             mock_result.markdown = "# Test Content"
             mock_convert.return_value = mock_result
-            
+
             result = extract_text_from_pdf(b"test")
-            
+
             # Test we're accessing the right attribute
             assert result == "# Test Content"
             assert not result.startswith("Error:")
 
     def test_fallback_to_fitz(self):
         """Verify fallback to PyMuPDF (fitz) when MarkItDown fails."""
-        with patch('tools.md_converter.convert') as mock_convert:
+        with patch("tools.md_converter.convert") as mock_convert:
             mock_convert.side_effect = Exception("MarkItDown failed")
-            
-            with patch('tools.fitz.open') as mock_fitz:
+
+            with patch("tools.fitz.open") as mock_fitz:
                 mock_doc = MagicMock()
                 mock_page = MagicMock()
                 mock_page.get_text.return_value = "Fitz text"
-                mock_doc.__iter__.return_value = [mock_page]
+                mock_doc.__iter__.side_effect = lambda: iter([mock_page])
                 mock_fitz.return_value = mock_doc
-                
+
                 result = extract_text_from_pdf(b"fake pdf")
-                
+
                 assert result == "Fitz text"
                 assert mock_fitz.called
 
@@ -63,23 +63,23 @@ class TestScrapeJobDescription:
         # Test our validation code path
         result = await scrape_job_description("not-a-url")
         assert "Invalid URL" in result
-        
+
         result = await scrape_job_description("ftp://example.com")
         assert "Invalid URL" in result
 
     @pytest.mark.asyncio
     async def test_constructs_jina_url_correctly(self):
         """Verify Jina URL construction."""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response = MagicMock()
             mock_response.text = "content"
             mock_response.raise_for_status = MagicMock()
-            
+
             mock_get = AsyncMock(return_value=mock_response)
             mock_client.return_value.__aenter__.return_value.get = mock_get
-            
+
             await scrape_job_description("https://example.com/job")
-            
+
             # Verify we called the right URL
             called_url = mock_get.call_args[0][0]
             assert called_url == "https://r.jina.ai/https://example.com/job"
@@ -87,38 +87,32 @@ class TestScrapeJobDescription:
     @pytest.mark.asyncio
     async def test_detects_empty_response(self):
         """Verify empty content detection logic."""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response = MagicMock()
             mock_response.text = "   \n\t  "  # Whitespace only
             mock_response.raise_for_status = MagicMock()
-            
-            mock_client.return_value.__aenter__.return_value.get = AsyncMock(
-                return_value=mock_response
-            )
-            
+
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+
             result = await scrape_job_description("https://example.com")
-            
+
             # Test our empty detection logic
             assert "empty" in result.lower()
 
     @pytest.mark.asyncio
     async def test_handles_http_errors_correctly(self):
         """Verify HTTP error handling returns proper messages."""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response = MagicMock()
             mock_response.status_code = 403
-            
+
             async def raise_http_error(*args, **kwargs):
-                raise httpx.HTTPStatusError(
-                    "Forbidden",
-                    request=MagicMock(),
-                    response=mock_response
-                )
-            
+                raise httpx.HTTPStatusError("Forbidden", request=MagicMock(), response=mock_response)
+
             mock_client.return_value.__aenter__.return_value.get = raise_http_error
-            
+
             result = await scrape_job_description("https://example.com")
-            
+
             # Test our error message formatting
             assert "403" in result
             assert "Failed to fetch" in result
@@ -126,13 +120,13 @@ class TestScrapeJobDescription:
     @pytest.mark.asyncio
     async def test_handles_connection_errors(self):
         """Verify connection error handling."""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
                 side_effect=httpx.ConnectError("Network unreachable")
             )
-            
+
             result = await scrape_job_description("https://example.com")
-            
+
             # Test our connection error message
             assert "Could not connect" in result
             assert "internet connection" in result
@@ -141,7 +135,7 @@ class TestScrapeJobDescription:
 # Integration Tests (require actual resources)
 class TestPDFExtractionIntegration:
     """Integration tests with real PDF processing."""
-    
+
     @pytest.mark.integration
     def test_extract_from_real_pdf(self):
         """Test with an actual minimal PDF."""
@@ -169,15 +163,15 @@ trailer<</Size 5/Root 1 0 R>>
 startxref
 306
 %%EOF"""
-        
+
         result = extract_text_from_pdf(minimal_pdf)
-        
+
         # Real test: Did extraction actually extract the text content?
         assert not result.startswith("Error:"), f"Extraction failed: {result}"
-        
+
         # Verify the actual content we put in the PDF was extracted
-        result_normalized = result.replace('\n', '').replace(' ', '')
+        result_normalized = result.replace("\n", "").replace(" ", "")
         assert "HelloWorld" in result_normalized, f"Expected 'HelloWorld' in extracted text, got: {result}"
-        
+
         # Should return non-empty text
         assert len(result.strip()) > 0
