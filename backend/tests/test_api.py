@@ -35,7 +35,11 @@ class TestResumeUpload:
         pdf_content = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n%%EOF"
 
         with patch("main.extract_text_from_pdf") as mock_extract:
-            mock_extract.return_value = "# John Doe\nSoftware Engineer with 5 years experience..."
+            mock_extract.return_value = (
+                "John Doe is a Software Engineer with 10 years of experience in Python, FastAPI, and React. "
+                "He has worked at several top tech companies and has a proven track record of "
+                "delivering high-quality software."
+            )
 
             files = {"file": ("resume.pdf", io.BytesIO(pdf_content), "application/pdf")}
             response = client.post("/api/resumes/upload", files=files)
@@ -68,10 +72,26 @@ class TestResumeUpload:
             assert response.status_code == 400
             assert "Error" in response.json()["detail"]
 
+    def test_upload_insufficient_content(self, client):
+        """Test handling of PDF with very little text."""
+        pdf_content = b"%PDF-1.4\n%%EOF"
+
+        with patch("main.extract_text_from_pdf") as mock_extract:
+            mock_extract.return_value = "Short text"  # Less than 50 chars
+
+            files = {"file": ("resume.pdf", io.BytesIO(pdf_content), "application/pdf")}
+            response = client.post("/api/resumes/upload", files=files)
+
+            assert response.status_code == 400
+            assert "insufficient" in response.json()["detail"].lower()
+
     def test_import_resume_from_url(self, client):
         """Test importing a resume from a URL."""
         with patch("main.scrape_job_description", new_callable=AsyncMock) as mock_scrape:
-            mock_scrape.return_value = "# Imported Resume Content"
+            mock_scrape.return_value = (
+                "This is a sufficiently long imported resume content that should pass the "
+                "validation check in the API endpoint."
+            )
 
             payload = {"url": "https://linkedin.com/in/test", "name": "LinkedIn Bio"}
             response = client.post("/api/resumes/import-url", json=payload)
@@ -80,7 +100,7 @@ class TestResumeUpload:
             data = response.json()
             assert data["name"] == "LinkedIn Bio"
             assert data["is_master"] is True
-            assert "# Imported" in data["preview"]
+            assert "sufficiently long" in data["preview"]
 
 
 class TestAnalyzeJob:
@@ -92,12 +112,15 @@ class TestAnalyzeJob:
         mock_result = MagicMock()
         mock_result.data = ResumeMatchResult(
             match_score=85,
-            tailored_resume_html="<h1>Tailored Resume</h1>",
-            cover_letter_html="<p>Cover letter</p>",
+            tailored_resume_html="<h1>Tailored Resume</h1><p>This is a long enough tailored resume content...</p>",
+            cover_letter_html="<p>Cover letter content that is also long enough...</p>",
             company_name="Test Company",
             job_title="Software Engineer",
             key_improvements=["Added Python skills", "Emphasized leadership"],
-            extracted_job_description="Cleaned JD content",
+            extracted_job_description=(
+                "This is a sufficiently long and cleaned job description content that should pass "
+                "the validation checks in the main handler."
+            ),
         )
 
         with patch("main.resume_agent.run", new_callable=AsyncMock) as mock_agent:
@@ -131,6 +154,29 @@ class TestAnalyzeJob:
 
             assert response.status_code == 500
             assert "failed" in response.json()["detail"].lower()
+
+    def test_analyze_job_invalid_jd_extracted(self, client, sample_resume):
+        """Test handling when agent fails to extract a proper JD."""
+        mock_result = MagicMock()
+        mock_result.data = ResumeMatchResult(
+            match_score=50,
+            tailored_resume_html="<h1>...</h1>",
+            cover_letter_html="<p>...</p>",
+            company_name="Unknown",
+            job_title="Unknown",
+            key_improvements=[],
+            extracted_job_description="Error: Could not read page",  # This marks it as invalid
+        )
+
+        with patch("main.resume_agent.run", new_callable=AsyncMock) as mock_agent:
+            mock_agent.return_value = mock_result
+
+            response = client.post(
+                "/api/analyze", json={"url": "https://example.com/bad", "resume_id": sample_resume.id}
+            )
+
+            assert response.status_code == 400
+            assert "valid job description" in response.json()["detail"].lower()
 
 
 class TestGetJobs:

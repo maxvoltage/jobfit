@@ -37,29 +37,31 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
-        # Method 2: Fallback to PyMuPDF (fitz)
-        if not content:
-            log_debug("MarkItDown failed or empty, trying PyMuPDF (fitz)...")
+        # Method 2: Fallback to PyMuPDF (fitz) if MarkItDown failed or returned too little content
+        if not content or len(content) < 50:
+            log_debug(f"MarkItDown result insufficient ({len(content)} chars), trying PyMuPDF (fitz)...")
             try:
-                log_debug("ABOUT TO OPEN FITZ")
                 doc = fitz.open(stream=file_bytes, filetype="pdf")
-                log_debug(f"DEBUG: doc object: {doc}, type: {type(doc)}")
-
                 text_parts = []
                 for page in doc:
                     text_parts.append(page.get_text())
-                content = "\n".join(text_parts).strip()
+                fitz_content = "\n".join(text_parts).strip()
                 doc.close()
+
+                # Only use Fitz content if it's better than what we already have
+                if len(fitz_content) > len(content):
+                    content = fitz_content
             except Exception as e:
                 log_debug(f"PyMuPDF extraction failed: {e}")
 
-            if not content:
-                log_error("All extraction methods returned empty content.")
-                return (
-                    "Error: Could not extract text from the PDF. "
-                    "This usually happens if the PDF is scanned (an image). "
-                    "Please try a text-based PDF or copy-paste your resume text manually."
-                )
+        # Final validation
+        if not content or len(content.strip()) < 50:
+            log_error(f"Extraction returned insufficient content ({len(content) if content else 0} chars).")
+            return (
+                "Error: Could not extract enough text from the PDF. "
+                "This usually happens if the PDF is scanned (an image) or mostly graphics. "
+                "Please try a text-based PDF or copy-paste your resume text manually."
+            )
 
         log_debug(f"PDF extraction complete. Extracted {len(content)} characters.")
         return content
@@ -87,9 +89,9 @@ async def scrape_job_description(url: str) -> str:
             response.raise_for_status()
 
             content = response.text.strip()
-            if not content:
-                log_error("Scraped job description was empty.")
-                return "Error: The job description page was empty or could not be read."
+            if not content or len(content) < 100:
+                log_error(f"Scraped content was too short or empty ({len(content) if content else 0} chars).")
+                return "Error: The job description page was empty, too short, or could not be read correctly."
 
             log_ai_interaction("SCRAPED CONTENT (JINA)", content, "yellow")
 

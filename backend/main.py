@@ -104,10 +104,10 @@ async def upload_resume(file: UploadFile = File(...), name: str = Form(None), db
     if content.startswith("Error:"):
         raise HTTPException(status_code=400, detail=content)
 
-    if not content.strip():
+    if not content.strip() or len(content.strip()) < 50:
         raise HTTPException(
             status_code=400,
-            detail=("The extracted resume content is empty. Please ensure the PDF is not scanned or empty."),
+            detail=("The extracted resume content is insufficient. Please ensure the PDF is not scanned or empty."),
         )
 
     # Set this as the master resume (latest) and demote previous ones
@@ -139,8 +139,8 @@ async def import_resume_from_url(request: ResumeImportRequest, db: Session = Dep
     if content.startswith("Error:"):
         raise HTTPException(status_code=400, detail=content)
 
-    if not content.strip():
-        raise HTTPException(status_code=400, detail="The scraped resume content is empty.")
+    if not content.strip() or len(content.strip()) < 50:
+        raise HTTPException(status_code=400, detail="The scraped resume content is insufficient.")
 
     # Set this as the master resume (latest) and demote previous ones
     db.query(models.Resume).update({models.Resume.is_master: False})
@@ -258,6 +258,18 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
         company = getattr(data, "company_name", "Unknown Company")
         title = getattr(data, "job_title", "Job Title")
         match_score = getattr(data, "match_score", 0)
+        extracted_jd = getattr(data, "extracted_job_description", "")
+
+        # VALIDATION: If we couldn't get a real JD, don't save
+        if not extracted_jd or "Error:" in extracted_jd or len(extracted_jd.strip()) < 50:
+            log_error(f"Validation failed: Extracted JD is invalid or too short. Content: {extracted_jd[:100]}...")
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Could not extract a valid job description. "
+                    "The source might be empty, mostly graphics, or protected."
+                ),
+            )
 
         # Fallback if AI didn't return them
         if company == "Unknown Company":
@@ -291,6 +303,8 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
             "cover_letter": job.cover_letter,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
 

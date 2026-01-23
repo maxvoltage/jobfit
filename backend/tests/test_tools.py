@@ -21,19 +21,21 @@ class TestExtractTextFromPDF:
 
                 # Test our error handling logic
                 assert result.startswith("Error:")
-                assert "extract text" in result.lower()
+                assert "extract" in result.lower() and "text" in result.lower()
 
     def test_returns_markdown_from_converter(self):
         """Verify we correctly extract the markdown attribute."""
         with patch("tools.md_converter.convert") as mock_convert:
             mock_result = MagicMock()
-            mock_result.markdown = "# Test Content"
+            mock_result.markdown = (
+                "This is a sufficiently long resume content that should pass the length check easily."
+            )
             mock_convert.return_value = mock_result
 
             result = extract_text_from_pdf(b"test")
 
             # Test we're accessing the right attribute
-            assert result == "# Test Content"
+            assert "sufficiently long" in result
             assert not result.startswith("Error:")
 
     def test_fallback_to_fitz(self):
@@ -44,14 +46,34 @@ class TestExtractTextFromPDF:
             with patch("tools.fitz.open") as mock_fitz:
                 mock_doc = MagicMock()
                 mock_page = MagicMock()
-                mock_page.get_text.return_value = "Fitz text"
+                mock_page.get_text.return_value = (
+                    "This is a sufficiently long resume content from Fitz that should pass."
+                )
                 mock_doc.__iter__.side_effect = lambda: iter([mock_page])
                 mock_fitz.return_value = mock_doc
 
                 result = extract_text_from_pdf(b"fake pdf")
-
-                assert result == "Fitz text"
+                assert "from Fitz" in result
                 assert mock_fitz.called
+
+    def test_rejects_insufficient_content(self):
+        """Verify that very short extraction results are treated as errors."""
+        with patch("tools.md_converter.convert") as mock_convert:
+            mock_result = MagicMock()
+            mock_result.markdown = "Short"  # Less than 50 chars
+            mock_convert.return_value = mock_result
+
+            # Fallback will also return short text
+            with patch("tools.fitz.open") as mock_fitz:
+                mock_doc = MagicMock()
+                mock_page = MagicMock()
+                mock_page.get_text.return_value = "Too short"
+                mock_doc.__iter__.side_effect = lambda: iter([mock_page])
+                mock_fitz.return_value = mock_doc
+
+                result = extract_text_from_pdf(b"test")
+                assert result.startswith("Error:")
+                assert "insufficient" in result.lower() or "enough text" in result.lower()
 
 
 class TestScrapeJobDescription:
@@ -96,8 +118,24 @@ class TestScrapeJobDescription:
 
             result = await scrape_job_description("https://example.com")
 
-            # Test our empty detection logic
-            assert "empty" in result.lower()
+            # Test our empty/short detection logic
+            assert "Error" in result
+            assert "empty" in result.lower() or "too short" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_detects_short_response(self):
+        """Verify short content detection logic."""
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.text = "This is a very short job description that should be rejected."
+            mock_response.raise_for_status = MagicMock()
+
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+
+            result = await scrape_job_description("https://example.com")
+
+            assert "Error" in result
+            assert "too short" in result.lower()
 
     @pytest.mark.asyncio
     async def test_handles_http_errors_correctly(self):
@@ -139,16 +177,20 @@ class TestPDFExtractionIntegration:
     @pytest.mark.integration
     def test_extract_from_real_pdf(self):
         """Test with an actual minimal PDF."""
-        # Minimal valid PDF (1 page, "Hello World")
+        # Minimal valid PDF (1 page, "Hello World" + more text)
         minimal_pdf = b"""%PDF-1.4
 1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
 2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj
 3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R>>endobj
-4 0 obj<</Length 44>>stream
+4 0 obj<</Length 150>>stream
 BT
 /F1 12 Tf
 100 700 Td
 (Hello World) Tj
+0 -20 Td
+(This is a longer test PDF content to satisfy the length requirements of the JobFit application. ) Tj
+0 -20 Td
+(It needs to be at least 50 characters long to pass the validation check.) Tj
 ET
 endstream
 endobj
@@ -161,7 +203,7 @@ xref
 0000000214 00000 n
 trailer<</Size 5/Root 1 0 R>>
 startxref
-306
+412
 %%EOF"""
 
         result = extract_text_from_pdf(minimal_pdf)
