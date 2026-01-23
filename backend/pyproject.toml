@@ -33,3 +33,13 @@ markers = [
     "integration: marks tests as integration tests that use real external resources (PDFs, HTTP calls)",
 ]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py313"
+
+[tool.ruff.lint]
+# Enable Pyflakes (F), pycodestyle (E, W), isort (I)
+select = ["E", "F", "W", "I"]
+ignore = []
