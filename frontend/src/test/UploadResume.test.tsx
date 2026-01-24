@@ -9,7 +9,7 @@ import * as api from '../lib/api';
 vi.mock('../lib/api', () => ({
     uploadResume: vi.fn(),
     importResumeFromUrl: vi.fn(),
-    pasteResume: vi.fn(),
+    addResumeManual: vi.fn(),
 }));
 
 vi.mock('../hooks/use-toast', () => ({
@@ -106,7 +106,7 @@ describe('UploadResume', () => {
     describe('Paste Text', () => {
         it('should handle resume pasting', async () => {
             const user = userEvent.setup();
-            vi.mocked(api.pasteResume).mockResolvedValue({
+            vi.mocked(api.addResumeManual).mockResolvedValue({
                 id: 2,
                 name: 'Pasted Resume',
                 content: 'Cleaned content',
@@ -120,7 +120,7 @@ describe('UploadResume', () => {
             );
 
             // Switch to Paste tab
-            const pasteTab = screen.getByRole('tab', { name: /paste text/i });
+            const pasteTab = screen.getByRole('tab', { name: /manual entry/i });
             await user.click(pasteTab);
 
             // Fill name
@@ -136,7 +136,7 @@ describe('UploadResume', () => {
             await user.click(saveButton);
 
             await waitFor(() => {
-                expect(api.pasteResume).toHaveBeenCalledWith('This is my resume text content which is long enough.', 'Manual Resume');
+                expect(api.addResumeManual).toHaveBeenCalledWith('This is my resume text content which is long enough.', 'Manual Resume');
                 expect(screen.getByText(/resume added/i)).toBeDefined();
             });
         });
