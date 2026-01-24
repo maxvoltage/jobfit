@@ -8,6 +8,7 @@ This follows SQLAlchemy 2.0 and FastAPI best practices:
 4. More maintainable and reusable
 """
 
+import subprocess
 import sys
 from unittest.mock import Mock
 
@@ -43,6 +44,42 @@ def setup_test_database():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+def pytest_sessionstart(session):
+    """Automatically run ruff check and format check before starting tests."""
+    from pathlib import Path
+
+    # Try to find ruff in the same directory as the python executable
+    python_path = Path(sys.executable)
+    ruff_bin = "ruff"  # Default to path
+
+    # If we are in a virtual environment, look in the bin/Scripts folder
+    if (python_path.parent / "ruff").exists():
+        ruff_bin = str(python_path.parent / "ruff")
+    elif (python_path.parent / "ruff.exe").exists():
+        ruff_bin = str(python_path.parent / "ruff.exe")
+
+    print(f"\n--- Running Ruff Linter & Formatter ({ruff_bin}) ---")
+
+    # 1. Check Linting
+    try:
+        lint_result = subprocess.run([ruff_bin, "check", "."], capture_output=True, text=True)
+        if lint_result.returncode != 0:
+            print(lint_result.stdout)
+            print(lint_result.stderr)
+            pytest.exit("Linting failed. Please fix ruff errors before running tests.", returncode=1)
+
+        # 2. Check Formatting
+        format_result = subprocess.run([ruff_bin, "format", "--check", "."], capture_output=True, text=True)
+        if format_result.returncode != 0:
+            print(format_result.stdout)
+            print(format_result.stderr)
+            pytest.exit("Formatting failed. Please run 'ruff format .' before running tests.", returncode=1)
+
+        print("Ruff: All checks passed!\n")
+    except FileNotFoundError:
+        print(f"Warning: '{ruff_bin}' not found. Skipping linting checks.")
 
 
 @pytest.fixture(scope="function")

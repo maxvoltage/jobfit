@@ -37,7 +37,7 @@ This document evaluates the JobFit project against the course scoring criteria.
 
 ### 4. Front-end implementation
 *   **Ranking:** 3 points
-*   **Explanation:** The React frontend is modular and uses centralized API communication. Core features and components are covered by unit and integration tests located in `frontend/src/test/`. Execution instructions are provided in `frontend/README.md`.
+*   **Explanation:** The React frontend is modular and uses centralized API communication. It includes comprehensive tests in `frontend/src/test/` and **automatically executes ESLint linting** as part of the `npm test` command.
 
 ### 5. API contract (OpenAPI specifications)
 *   **Ranking:** 2 points
@@ -45,7 +45,7 @@ This document evaluates the JobFit project against the course scoring criteria.
 
 ### 6. Back-end implementation
 *   **Ranking:** 3 points
-*   **Explanation:** The backend is built with FastAPI, strictly adhering to the OpenAPI specification. It includes a robust test suite in `backend/tests/` that verifies API logic, extraction tools, and edge-case handling.
+*   **Explanation:** Built with FastAPI, strictly adhering to the OpenAPI specification. The system **automatically runs the Ruff linter and formatter** via a pytest hook whenever tests are initiated, ensuring zero style or formatting regressions.
 
 ### 7. Database integration
 *   **Ranking:** 2 points

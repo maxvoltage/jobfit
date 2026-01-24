@@ -27,15 +27,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Run Ruff
+      - name: Run Tests (includes automated Ruff lint/format)
+        # Set dummy env vars for testing
         run: |
-          uv run ruff check .
-          uv run ruff format --check .
-
-      - name: Run Tests
-        # Reset config for tests or use environment variables if needed
-        run: |
-          # Set dummy env vars for testing if .env isn't present
           export OPENAI_API_KEY="dummy"
           export ANTHROPIC_API_KEY="dummy"
           export MISTRAL_API_KEY="dummy"
@@ -61,10 +55,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Lint
-        run: npm run lint
-
-      - name: Run Tests
+      - name: Run Tests (includes automated ESLint)
         run: npm run test
 
       - name: Build

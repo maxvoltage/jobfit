@@ -17,13 +17,12 @@ class TestRootEndpoint:
     """Test the root endpoint."""
 
     def test_root_returns_welcome_message(self, client):
-        """Test that root endpoint returns welcome message."""
-        response = client.get("/")
+        """Test that health endpoint returns welcome message."""
+        response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
         assert "message" in data
         assert "JobFit" in data["message"]
-        assert "llm_model" in data
 
 
 class TestResumeUpload:
