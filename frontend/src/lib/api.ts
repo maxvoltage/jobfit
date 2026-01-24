@@ -1,6 +1,6 @@
 import { JobApplication, AnalyzeJobResponse, Resume } from '@/types';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = '/api';
 
 interface BackendJob {
   id: number;

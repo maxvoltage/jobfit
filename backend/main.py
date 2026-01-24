@@ -1,10 +1,12 @@
+import os
 from datetime import UTC, datetime
 from typing import List
 
 import logfire
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from weasyprint import HTML
@@ -33,7 +35,7 @@ logfire.instrument_fastapi(app)
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://localhost:5173"],  # Frontend URL
+    allow_origins=["http://localhost:8080", "http://localhost:5173", "http://localhost:8000"],  # Frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,13 +79,13 @@ class RegenerateRequest(BaseModel):
     prompt: str | None = None
 
 
-@app.get("/")
-async def root():
+@app.get("/api/health")
+async def health_check():
     import os
 
     log_debug(f"Using database at: {config.DATABASE_URL}")
     log_debug(f"Current working directory: {os.getcwd()}")
-    return {"message": "Welcome to JobFit API", "llm_model": config.LLM_NAME, "database_url": config.DATABASE_URL}
+    return {"message": "Welcome to JobFit API", "online": True}
 
 
 @app.post("/api/resumes/upload", response_model=ResumeResponse)
@@ -510,3 +512,23 @@ Please provide the updated content in the required structured format.
         log_error(f"Regeneration failed: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Regeneration failed: {str(e)}")
+
+
+# Serve Static Files (Frontend)
+# This allows the combined Docker container to serve the React app
+static_path = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_path):
+    app.mount("/assets", StaticFiles(directory=os.path.join(static_path, "assets")), name="assets")
+
+    @app.get("/{catchall:path}")
+    async def serve_frontend(catchall: str):
+        # If the path starts with api/, it's a 404
+        if catchall.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API route not found")
+
+        file_path = os.path.join(static_path, catchall)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+
+        # Fallback to index.html for SPA routing
+        return FileResponse(os.path.join(static_path, "index.html"))

@@ -147,6 +147,16 @@ backend/
 - `status`: Application status (todo/applied/interview)
 - `created_at`: Timestamp
 
+## Database Storage
+
+### Location
+- **Local (Direct)**: By default, the database is stored as `jobfit.db` in the project root.
+- **Docker/Production**: The database is located at `/app/data/jobfit.db`.
+- **Docker Compose**: The `/app/data` directory is mapped to the `./data` folder in your project root.
+
+### Rationale
+We store the database in a dedicated `/app/data` volume (or host-mapped folder) to ensure **data persistence**. Since Docker containers are ephemeral (files inside are lost when the container is deleted), mapping the SQLite file to your local machine ensures your resumes and application history are preserved across restarts and updates.
+
 ## Development
 
 ### Code Quality
