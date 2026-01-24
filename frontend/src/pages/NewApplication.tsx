@@ -142,7 +142,7 @@ export default function NewApplication() {
               <TabsContent value="url" className="mt-0">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="input-label">Select Resume</Label>
+                    <Label className="input-label">Select Resume <span className="text-destructive">*</span></Label>
                     {resumes.length > 0 ? (
                       <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
                         <SelectTrigger>
@@ -158,13 +158,13 @@ export default function NewApplication() {
                       </Select>
                     ) : (
                       <div className="p-3 border rounded-md bg-muted/30 text-sm">
-                        No resumes found. <Link to="/upload-resume" className="text-primary hover:underline">Upload one first</Link>
+                        No resumes found. <Link to="/upload" className="text-primary hover:underline">Upload one first</Link>
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <Label htmlFor="jobUrl" className="input-label">Job URL</Label>
+                    <Label htmlFor="jobUrl" className="input-label">Job URL <span className="text-destructive">*</span></Label>
                     <Input
                       id="jobUrl"
                       placeholder="https://careers.example.com/job/12345"
@@ -196,7 +196,7 @@ export default function NewApplication() {
               <TabsContent value="manual" className="mt-0">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="input-label">Select Resume</Label>
+                    <Label className="input-label">Select Resume <span className="text-destructive">*</span></Label>
                     {resumes.length > 0 ? (
                       <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
                         <SelectTrigger>
@@ -212,13 +212,13 @@ export default function NewApplication() {
                       </Select>
                     ) : (
                       <div className="p-3 border rounded-md bg-muted/30 text-sm">
-                        No resumes found. <Link to="/upload-resume" className="text-primary hover:underline">Upload one first</Link>
+                        No resumes found. <Link to="/upload" className="text-primary hover:underline">Upload one first</Link>
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <Label htmlFor="description" className="input-label">Job Description</Label>
+                    <Label htmlFor="description" className="input-label">Job Description <span className="text-destructive">*</span></Label>
                     <Textarea
                       id="description"
                       placeholder="Paste the full job description here..."

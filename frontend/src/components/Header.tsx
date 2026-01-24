@@ -12,13 +12,8 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <div className="page-container !py-0">
         <div className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg overflow-hidden bg-white/50 backdrop-blur-sm border border-border/50 shadow-sm transition-all group-hover:scale-110 group-hover:shadow-md">
-              <img src="/logo.png" alt="JobFit Logo" className="h-full w-full object-contain" />
-            </div>
-            <span className="font-bold text-xl text-foreground group-hover:text-primary transition-colors tracking-tight">
-              JobFit
-            </span>
+          <Link to="/" className="font-bold text-xl text-foreground hover:text-primary transition-colors tracking-tight">
+            JobFit
           </Link>
 
           <nav className="flex items-center gap-4">

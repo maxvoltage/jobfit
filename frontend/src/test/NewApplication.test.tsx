@@ -103,4 +103,19 @@ describe('NewApplication Auto-save and Redirect', () => {
             expect(trigger.textContent).toContain('Latest Master CV');
         });
     });
+
+    it('should show link to /upload when no resumes are found', async () => {
+        vi.mocked(api.getResumes).mockResolvedValue([]);
+
+        render(
+            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <NewApplication />
+            </MemoryRouter>
+        );
+
+        await waitFor(() => {
+            const link = screen.getAllByRole('link', { name: /upload one first/i })[0];
+            expect(link.getAttribute('href')).toBe('/upload');
+        });
+    });
 });
