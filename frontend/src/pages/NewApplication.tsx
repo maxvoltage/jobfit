@@ -121,7 +121,12 @@ export default function NewApplication() {
           Back to Dashboard
         </Button>
         <h1 className="page-title">New Application</h1>
-        <p className="page-description">Add a new job application to track</p>
+        <p className="page-description">
+          Job application link should not be behind a login or a paywall.<br />
+          If you can't directly bring up the job description using the URL you see, it won't work.<br />
+          (e.g., dynamically loaded job descriptions, certain bulletin boards, etc.)<br />
+          You can always copy and paste the job description using the manual tab.
+        </p>
       </div>
 
       <div className="max-w-3xl">

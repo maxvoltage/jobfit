@@ -13,6 +13,8 @@ import { MatchScoreBadge } from '@/components/MatchScoreBadge';
 import { getApplication, regenerateContent, updateApplication, downloadJobPdf } from '@/lib/api';
 import { JobApplication } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { RichTextEditor } from '@/components/RichTextEditor';
+import { Edit2, Save, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +38,23 @@ export default function JobDetail() {
   const [activeTab, setActiveTab] = useState('resume');
   const [regenPrompt, setRegenPrompt] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedResume, setEditedResume] = useState('');
+  const [editedCover, setEditedCover] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Helper to extract body content from HTML
+  const extractBody = (html: string) => {
+    if (!html) return '';
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    return bodyMatch ? bodyMatch[1] : html;
+  };
+
+  // Helper to re-wrap body content into original HTML structure
+  const rewrapBody = (originalHtml: string, newBody: string) => {
+    if (!originalHtml.includes('<body')) return newBody;
+    return originalHtml.replace(/(<body[^>]*>)([\s\S]*?)(<\/body>)/i, `$1${newBody}$3`);
+  };
 
   const loadApplication = useCallback(async (appId: string) => {
     try {
@@ -138,6 +157,52 @@ export default function JobDetail() {
     }
   };
 
+  const handleStartEdit = () => {
+    if (!application) return;
+    setEditedResume(extractBody(application.tailoredResume));
+    setEditedCover(extractBody(application.coverLetter));
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!id || !application) return;
+
+    setIsSaving(true);
+    try {
+      const fullResume = rewrapBody(application.tailoredResume, editedResume);
+      const fullCover = rewrapBody(application.coverLetter, editedCover);
+
+      await updateApplication(id, {
+        tailored_resume: fullResume,
+        cover_letter: fullCover
+      });
+
+      setApplication({
+        ...application,
+        tailoredResume: fullResume,
+        coverLetter: fullCover
+      });
+
+      toast({
+        title: 'Saved',
+        description: 'Changes saved successfully',
+      });
+      setIsEditing(false);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save changes',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="page-container">
@@ -195,51 +260,74 @@ export default function JobDetail() {
               </Label>
             </div>
             <div className="flex items-center gap-2">
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    disabled={isRegenerating}
-                  >
-                    {isRegenerating ? (
+              {!isEditing ? (
+                <>
+                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        disabled={isRegenerating}
+                      >
+                        {isRegenerating ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                        )}
+                        Regenerate
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Regenerate Content</DialogTitle>
+                        <DialogDescription>
+                          Is there something specific you'd like to change or correct?
+                          (e.g., "my name is wrong", "emphasize my Python skills more")
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <Textarea
+                          placeholder="Enter your instructions here (optional)..."
+                          value={regenPrompt}
+                          onChange={(e) => setRegenPrompt(e.target.value)}
+                          className="min-h-[120px]"
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          type="submit"
+                          onClick={handleRegenerate}
+                          disabled={isRegenerating}
+                        >
+                          {isRegenerating ? "Regenerating..." : "Start Regeneration"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                  <Button variant="outline" onClick={handleStartEdit}>
+                    <Edit2 className="mr-2 h-4 w-4" />
+                    Edit Text
+                  </Button>
+                  <Button onClick={handleDownloadPdf}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="ghost" onClick={handleCancelEdit} disabled={isSaving}>
+                    <X className="mr-2 h-4 w-4" />
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveEdit} disabled={isSaving}>
+                    {isSaving ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <RefreshCw className="mr-2 h-4 w-4" />
+                      <Save className="mr-2 h-4 w-4" />
                     )}
-                    Regenerate
+                    Save Changes
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Regenerate Content</DialogTitle>
-                    <DialogDescription>
-                      Is there something specific you'd like to change or correct?
-                      (e.g., "my name is wrong", "emphasize my Python skills more")
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <Textarea
-                      placeholder="Enter your instructions here (optional)..."
-                      value={regenPrompt}
-                      onChange={(e) => setRegenPrompt(e.target.value)}
-                      className="min-h-[120px]"
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      type="submit"
-                      onClick={handleRegenerate}
-                      disabled={isRegenerating}
-                    >
-                      {isRegenerating ? "Regenerating..." : "Start Regeneration"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              <Button onClick={handleDownloadPdf}>
-                <Download className="mr-2 h-4 w-4" />
-                Download PDF
-              </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -267,7 +355,12 @@ export default function JobDetail() {
 
             <TabsContent value="resume" className="mt-0">
               <div className="max-h-[600px] overflow-y-auto pr-2">
-                {application.tailoredResume ? (
+                {isEditing ? (
+                  <RichTextEditor
+                    content={editedResume}
+                    onChange={setEditedResume}
+                  />
+                ) : application.tailoredResume ? (
                   <div className="markdown-preview">
                     <MarkdownPreview content={application.tailoredResume} />
                   </div>
@@ -279,7 +372,12 @@ export default function JobDetail() {
 
             <TabsContent value="cover" className="mt-0">
               <div className="max-h-[600px] overflow-y-auto pr-2">
-                {application.coverLetter ? (
+                {isEditing ? (
+                  <RichTextEditor
+                    content={editedCover}
+                    onChange={setEditedCover}
+                  />
+                ) : application.coverLetter ? (
                   <div className="markdown-preview">
                     <MarkdownPreview content={application.coverLetter} />
                   </div>

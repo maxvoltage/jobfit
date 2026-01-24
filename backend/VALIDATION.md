@@ -65,3 +65,22 @@ This document outlines the validation logic and error messages implemented in th
     *   **Error Message:** `"Resume not found"` / `"Job not found"`
     *   **Status Code:** `404 Not Found`
     *   **Test coverage:** `test_analyze_job_resume_not_found`, `test_get_job_not_found`
+
+---
+
+## 5. Job Update \u0026 Content Editing
+
+### PATCH `/api/jobs/{job_id}`
+*   **Case: Update Tailored Resume/Cover Letter**
+    *   **Logic:** Allows updating the `tailored_resume` and `cover_letter` fields after AI generation. This enables users to manually edit content before downloading PDFs. The endpoint accepts optional fields: `status`, `applied`, `tailored_resume`, and `cover_letter`.
+    *   **Error Message:** `"Job not found"`
+    *   **Status Code:** `404 Not Found` (if job doesn't exist)
+    *   **Test coverage:** Existing `test_update_job_status` covers the endpoint
+
+*   **Case: Content Validation**
+    *   **Logic:** No minimum length validation is applied to edited content, as users may intentionally shorten or modify the AI-generated text. The content is saved as-is.
+    *   **Error Message:** N/A (No validation errors for content length)
+
+*   **Case: HTML Structure Preservation**
+    *   **Logic:** The frontend is responsible for preserving the HTML structure (head, style tags, etc.) when editing. The backend simply stores the provided HTML string.
+    *   **Error Message:** N/A (Backend doesn't validate HTML structure)

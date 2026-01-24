@@ -145,8 +145,12 @@ export default function UploadResume() {
                     Back to Dashboard
                 </Button>
                 <h1 className="page-title">Add My Resume</h1>
-                <p className="page-description">Add your master resume (PDF, URL, or Paste) for AI tailoring</p>
-            </div>
+                <p className="page-description">
+                    URL resumes shouldn't be behind a login or a paywall.<br />
+                    PDF resumes should contain text content. (e.g, scanned or image resumes will not work)<br />
+                    You can always copy and paste your resume text using the manual tab.
+                </p>
+            </div >
 
             <div className="max-w-3xl">
                 <div className="card-elevated">
@@ -256,7 +260,7 @@ export default function UploadResume() {
                                     <TabsContent value="url" className="mt-0">
                                         <div className="space-y-4">
                                             <div className="space-y-2">
-                                                <Label htmlFor="resume-url" className="input-label">LinkedIn or Portfolio URL <span className="text-destructive">*</span></Label>
+                                                <Label htmlFor="resume-url" className="input-label">Resume URL <span className="text-destructive">*</span></Label>
                                                 <div className="relative">
                                                     <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                                                     <Input
@@ -318,6 +322,6 @@ export default function UploadResume() {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

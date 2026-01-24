@@ -388,6 +388,8 @@ async def get_job(job_id: int, db: Session = Depends(get_db)):
 class UpdateJobRequest(BaseModel):
     status: str | None = None
     applied: bool | None = None
+    tailored_resume: str | None = None
+    cover_letter: str | None = None
 
 
 @app.patch("/api/jobs/{job_id}")
@@ -405,6 +407,11 @@ async def update_job(job_id: int, request: UpdateJobRequest, db: Session = Depen
         elif job.status == models.JobStatus.applied:
             # If unticked and was previously 'applied', revert to 'todo'
             job.status = models.JobStatus.todo
+
+    if request.tailored_resume is not None:
+        job.tailored_resume = request.tailored_resume
+    if request.cover_letter is not None:
+        job.cover_letter = request.cover_letter
 
     db.commit()
     db.refresh(job)

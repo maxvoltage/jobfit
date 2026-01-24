@@ -28,3 +28,16 @@ This document describes the client-side validation logic to ensure data integrit
 *   **Case: Resume Selection**
     *   **Logic:** Ensures a master resume is selected or available before allowing a job analysis to start.
     *   **Error Message:** `"No resume found. Please upload a resume first."` (Redirect/Toast)
+
+## 4. Job Detail Editing
+*   **Case: Edit Mode Validation**
+    *   **Logic:** Users can edit the tailored resume and cover letter content using a rich-text editor (Tiptap). The editor extracts the `<body>` content from the HTML for editing and re-wraps it with the original HTML structure (including CSS) when saving.
+    *   **Error Message:** `"Failed to save changes"` (Toast on API error)
+
+*   **Case: Content Preservation**
+    *   **Logic:** When entering edit mode, the original HTML structure is preserved. Only the body content is editable. Upon saving, the edited content is wrapped back into the original HTML with all styling intact.
+    *   **Error Message:** N/A (Automatic handling)
+
+*   **Case: Cancel Edit**
+    *   **Logic:** Users can cancel editing without saving changes. No API call is made when canceling.
+    *   **Error Message:** N/A (No error state)

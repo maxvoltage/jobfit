@@ -202,5 +202,85 @@ describe('JobDetail Page', () => {
         await user.click(downloadButton);
         expect(api.downloadJobPdf).toHaveBeenCalledWith('1', 'cover');
     });
+
+    it('should allow editing and saving resume content', async () => {
+        const user = userEvent.setup();
+        const jobWithBody = {
+            ...mockJob,
+            tailoredResume: '<html><head></head><body><p>Original resume content</p></body></html>',
+            coverLetter: '<html><head></head><body><p>Original cover letter</p></body></html>'
+        };
+        vi.mocked(api.getApplication).mockResolvedValue(jobWithBody as unknown as JobApplication);
+        vi.mocked(api.updateApplication).mockResolvedValue(jobWithBody as unknown as JobApplication);
+
+        render(
+            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <Routes>
+                    <Route path="/job/:id" element={<JobDetail />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => screen.getByText('Test Company'));
+
+        // Click Edit Text button
+        const editButton = screen.getByRole('button', { name: /edit text/i });
+        await user.click(editButton);
+
+        // Verify edit mode is active - should see Save Changes and Cancel buttons
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+        });
+
+        // Click Save Changes
+        const saveButton = screen.getByRole('button', { name: /save changes/i });
+        await user.click(saveButton);
+
+        // Verify updateApplication was called with the content
+        await waitFor(() => {
+            expect(api.updateApplication).toHaveBeenCalledWith('1', expect.objectContaining({
+                tailored_resume: expect.any(String),
+                cover_letter: expect.any(String)
+            }));
+        });
+
+        // Verify we're back in view mode
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: /edit text/i })).toBeInTheDocument();
+        });
+    });
+
+    it('should allow canceling edit mode', async () => {
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <Routes>
+                    <Route path="/job/:id" element={<JobDetail />} />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        await waitFor(() => screen.getByText('Test Company'));
+
+        // Click Edit Text button
+        const editButton = screen.getByRole('button', { name: /edit text/i });
+        await user.click(editButton);
+
+        // Verify edit mode is active
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+        });
+
+        // Click Cancel
+        const cancelButton = screen.getByRole('button', { name: /cancel/i });
+        await user.click(cancelButton);
+
+        // Verify we're back in view mode and updateApplication was NOT called
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: /edit text/i })).toBeInTheDocument();
+        });
+        expect(api.updateApplication).not.toHaveBeenCalled();
+    });
 });
 
