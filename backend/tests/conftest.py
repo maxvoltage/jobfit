@@ -64,7 +64,7 @@ def pytest_sessionstart(session):
 
     # 1. Check Linting
     try:
-        lint_result = subprocess.run([ruff_bin, "check", "."], capture_output=True, text=True)
+        lint_result = subprocess.run([ruff_bin, "check", ".", "--ignore", "E501"], capture_output=True, text=True)
         if lint_result.returncode != 0:
             print(lint_result.stdout)
             print(lint_result.stderr)

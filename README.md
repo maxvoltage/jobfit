@@ -54,3 +54,8 @@ This handles your `.env` file and ensures your data is saved in a local `./data`
 - **CI/CD**: The project uses **GitHub Actions** for automated testing and linting. Note that while Docker handles the execution environment, the CI pipeline ensures code quality before deployment. This part is independent of your local Docker builds.
 
 Detailed setup instructions and validation rules are located in the `/backend` and `/frontend` directories.
+
+## Possible Future Improvements
+
+- Multi user support: Currently, the application is designed for a single user. Future improvements could include user authentication and authorization to allow multiple users to access their own resumes and applications.
+- Uploaded resume history: Currently, the application only stores the most recent resume and application. Future improvements could include a history of uploaded resumes and applications to allow users to access previous versions.

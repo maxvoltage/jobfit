@@ -102,6 +102,48 @@ class TestResumeUpload:
             assert "sufficiently long" in data["preview"]
 
 
+class TestResumeManual:
+    """Test resume manual entry endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_add_resume_manual_success(self, client):
+        """Test adding a valid resume text manually."""
+        # Mock the cleaning agent
+        mock_result = MagicMock()
+        mock_result.output = (
+            "# John Doe\n\n"
+            "## Experience\n"
+            "- Software Engineer with 10 years of experience in Python, FastAPI, and React."
+        )
+
+        with patch("main.clean_resume_agent.run", new_callable=AsyncMock) as mock_agent:
+            mock_agent.return_value = mock_result
+
+            payload = {
+                "content": (
+                    "John Doe. Software Engineer with 10 years of experience in Python, FastAPI, and React. "
+                    "He has worked at several top tech companies and has a proven track record of "
+                    "delivering high-quality software."
+                ),
+                "name": "My Manual Resume",
+            }
+            response = client.post("/api/resumes/manual", json=payload)
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["name"] == "My Manual Resume"
+            assert "# John Doe" in data["preview"]
+            assert data["is_master"] is True
+
+    def test_add_resume_manual_too_short(self, client):
+        """Test adding a resume that is too short."""
+        payload = {"content": "Too short", "name": "Shorty"}
+        response = client.post("/api/resumes/manual", json=payload)
+
+        assert response.status_code == 400
+        assert "too short" in response.json()["detail"].lower()
+
+
 class TestAnalyzeJob:
     """Test job analysis endpoint."""
 
@@ -109,7 +151,7 @@ class TestAnalyzeJob:
         """Test successful job analysis."""
         # Mock the agent response
         mock_result = MagicMock()
-        mock_result.data = ResumeMatchResult(
+        mock_result.output = ResumeMatchResult(
             match_score=85,
             tailored_resume_html="<h1>Tailored Resume</h1><p>This is a long enough tailored resume content...</p>",
             cover_letter_html="<p>Cover letter content that is also long enough...</p>",
@@ -157,7 +199,7 @@ class TestAnalyzeJob:
     def test_analyze_job_invalid_jd_extracted(self, client, sample_resume):
         """Test handling when agent fails to extract a proper JD."""
         mock_result = MagicMock()
-        mock_result.data = ResumeMatchResult(
+        mock_result.output = ResumeMatchResult(
             match_score=50,
             tailored_resume_html="<h1>...</h1>",
             cover_letter_html="<p>...</p>",
@@ -311,7 +353,7 @@ class TestRegenerateJob:
         """Test successful job content regeneration."""
         # Mock the agent response
         mock_result = MagicMock()
-        mock_result.data = ResumeMatchResult(
+        mock_result.output = ResumeMatchResult(
             match_score=95,
             tailored_resume_html="<h1>Updated Tailored Resume</h1>",
             cover_letter_html="<p>Updated Cover letter</p>",
@@ -337,7 +379,7 @@ class TestRegenerateJob:
     async def test_regenerate_job_no_prompt(self, client, sample_job):
         """Test regeneration without a prompt (uses default)."""
         mock_result = MagicMock()
-        mock_result.data = ResumeMatchResult(
+        mock_result.output = ResumeMatchResult(
             match_score=90,
             tailored_resume_html="<h1>Regenerated</h1>",
             cover_letter_html="<p>Regenerated</p>",
@@ -382,7 +424,7 @@ class TestRegenerateJob:
         class EmptyData:
             pass
 
-        mock_result.data = EmptyData()
+        mock_result.output = EmptyData()
 
         with patch("main.resume_agent_no_tools.run", new_callable=AsyncMock) as mock_agent:
             mock_agent.return_value = mock_result

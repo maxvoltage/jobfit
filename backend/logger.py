@@ -33,3 +33,15 @@ def log_debug(message: str):
 def log_error(message: str):
     """Print an error message (always printed)."""
     console.print(f"[bold red]ERROR:[/bold red] {message}")
+
+
+async def log_requests_middleware(request, call_next):
+    """Log incoming requests if DEBUG is enabled."""
+    log_debug(f"🔵 REQUEST: {request.method} {request.url.path}")
+    try:
+        response = await call_next(request)
+        log_debug(f"✅ RESPONSE: {response.status_code}")
+        return response
+    except Exception as e:
+        log_error(f"❌ ERROR: {str(e)}")
+        raise

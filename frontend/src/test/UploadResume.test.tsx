@@ -9,6 +9,7 @@ import * as api from '../lib/api';
 vi.mock('../lib/api', () => ({
     uploadResume: vi.fn(),
     importResumeFromUrl: vi.fn(),
+    pasteResume: vi.fn(),
 }));
 
 vi.mock('../hooks/use-toast', () => ({
@@ -97,6 +98,45 @@ describe('UploadResume', () => {
 
             await waitFor(() => {
                 expect(api.importResumeFromUrl).toHaveBeenCalledWith('https://linkedin.com/in/test', 'My LinkedIn');
+                expect(screen.getByText(/resume added/i)).toBeDefined();
+            });
+        });
+    });
+
+    describe('Paste Text', () => {
+        it('should handle resume pasting', async () => {
+            const user = userEvent.setup();
+            vi.mocked(api.pasteResume).mockResolvedValue({
+                id: 2,
+                name: 'Pasted Resume',
+                content: 'Cleaned content',
+                is_master: true
+            });
+
+            render(
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <UploadResume />
+                </MemoryRouter>
+            );
+
+            // Switch to Paste tab
+            const pasteTab = screen.getByRole('tab', { name: /paste text/i });
+            await user.click(pasteTab);
+
+            // Fill name
+            const nameInput = screen.getByLabelText(/resume name/i);
+            await user.type(nameInput, 'Manual Resume');
+
+            // Fill Content
+            const textArea = screen.getByPlaceholderText(/paste your resume text here/i);
+            await user.type(textArea, 'This is my resume text content which is long enough.');
+
+            // Click Save
+            const saveButton = screen.getByRole('button', { name: /clean and save/i });
+            await user.click(saveButton);
+
+            await waitFor(() => {
+                expect(api.pasteResume).toHaveBeenCalledWith('This is my resume text content which is long enough.', 'Manual Resume');
                 expect(screen.getByText(/resume added/i)).toBeDefined();
             });
         });

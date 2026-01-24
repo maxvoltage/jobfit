@@ -188,6 +188,35 @@ export async function importResumeFromUrl(url: string, name?: string): Promise<R
   };
 }
 
+export async function addResumeManual(content: string, name?: string): Promise<Resume> {
+  const response = await fetch(`${API_BASE_URL}/resumes/manual`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, name }),
+  });
+
+  if (!response.ok) {
+    let errorDetail = 'Failed to save manual resume';
+    try {
+      const error = await response.json();
+      errorDetail = error.detail || errorDetail;
+    } catch (e) {
+      // Fallback if not JSON (e.g. 500 HTML or 404 HTML)
+      const text = await response.text();
+      console.error('Non-JSON error response:', text);
+    }
+    throw new Error(errorDetail);
+  }
+
+  const data = await response.json();
+  return {
+    id: data.id,
+    name: data.name,
+    content: data.preview,
+    is_master: data.is_master,
+  };
+}
+
 export async function getResumes(): Promise<Resume[]> {
   const response = await fetch(`${API_BASE_URL}/resumes`);
   if (!response.ok) throw new Error('Failed to fetch resumes');

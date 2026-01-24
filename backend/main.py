@@ -1,4 +1,5 @@
 import os
+import traceback
 from datetime import UTC, datetime
 from typing import List
 
@@ -13,9 +14,10 @@ from weasyprint import HTML
 
 import config
 import models
-from agent import resume_agent, resume_agent_no_tools
+from agent import clean_resume_agent, resume_agent, resume_agent_no_tools
 from database import Base, engine, get_db
-from logger import log_ai_interaction, log_debug, log_error
+from logger import log_ai_interaction, log_debug, log_error, log_requests_middleware
+from prompts import get_initial_tailoring_prompt, get_regeneration_prompt
 from tools import extract_text_from_pdf, scrape_job_description
 
 # Initialize Logfire for elegant AI monitoring
@@ -35,11 +37,15 @@ logfire.instrument_fastapi(app)
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://localhost:5173", "http://localhost:8000"],  # Frontend URL
+    allow_origins=["http://localhost:8080", "http://localhost:8000"],  # Frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Register logging middleware
+app.middleware("http")(log_requests_middleware)
 
 
 # Pydantic models for request/response
@@ -58,6 +64,11 @@ class ResumeResponse(BaseModel):
 
 class ResumeImportRequest(BaseModel):
     url: str
+    name: str | None = None
+
+
+class ResumeManualRequest(BaseModel):
+    content: str
     name: str | None = None
 
 
@@ -86,6 +97,44 @@ async def health_check():
     log_debug(f"Using database at: {config.DATABASE_URL}")
     log_debug(f"Current working directory: {os.getcwd()}")
     return {"message": "Welcome to JobFit API", "online": True}
+
+
+def extract_agent_data(result):
+    """Robustly extract data from an agent result object, handling various formats."""
+    log_debug(f"Result Type: {type(result)}")
+
+    # Log usage if available (token counts)
+    try:
+        if hasattr(result, "usage"):
+            usage = result.usage()
+            # PydanticAI Usage object uses request_tokens and response_tokens
+            total = getattr(usage, "total_tokens", 0)
+            request = getattr(usage, "request_tokens", 0)
+            response = getattr(usage, "response_tokens", 0)
+            log_debug(f"AI Interaction Summary -> Tokens: {total} (Request: {request}, Response: {response})")
+    except Exception as e:
+        log_debug(f"Could not extract usage info: {e}")
+
+    # Try .output or .data attribute (standard pydantic-ai result locations)
+    for attr in ["output", "data"]:
+        data = getattr(result, attr, None)
+        if data is not None:
+            return data
+
+    # Fallback to other common attributes
+    for attr in ["result", "content", "message"]:
+        data = getattr(result, attr, None)
+        if data is not None:
+            log_debug(f"Found data in .{attr} attribute")
+            return data
+
+    # If it's a string or has a .text (some versions/fallbacks)
+    if hasattr(result, "text"):
+        log_debug("Found data in .text attribute")
+        return result.text
+
+    log_debug("Could find no structured data attribute. Returning result object itself.")
+    return result
 
 
 @app.post("/api/resumes/upload", response_model=ResumeResponse)
@@ -164,6 +213,48 @@ async def import_resume_from_url(request: ResumeImportRequest, db: Session = Dep
     )
 
 
+@app.post("/api/resumes/manual", response_model=ResumeResponse)
+async def add_resume_manual(request: ResumeManualRequest, db: Session = Depends(get_db)):
+    """Clean and save a manually pasted resume."""
+    log_debug(f"📄 MANUAL RESUME START: {request.name}")
+
+    if not request.content.strip() or len(request.content.strip()) < 50:
+        raise HTTPException(status_code=400, detail="The pasted resume content is too short.")
+
+    # Use the cleaning agent to format the text to Markdown
+    try:
+        log_ai_interaction("CLEAN RESUME REQUEST", request.content, "blue")
+        result = await clean_resume_agent.run(request.content)
+        cleaned_content = extract_agent_data(result)
+        log_ai_interaction("CLEAN RESUME RESPONSE", cleaned_content, "green")
+    except Exception as e:
+        log_error(f"Resume cleaning failed: {str(e)}")
+        log_debug(f"Full Error Traceback:\n{traceback.format_exc()}")
+        # Fallback to raw content if cleaning fails
+        cleaned_content = request.content
+
+    # Set this as the master resume (latest) and demote previous ones
+    db.query(models.Resume).update({models.Resume.is_master: False})
+
+    # Save to database
+    resume = models.Resume(
+        name=request.name if request.name else f"Pasted Resume {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        content=cleaned_content,
+        is_master=True,
+    )
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+    log_debug(f"Successfully saved pasted resume ID: {resume.id}, name: {resume.name}")
+
+    return ResumeResponse(
+        id=resume.id,
+        name=resume.name,
+        preview=cleaned_content[:100] + "...",
+        is_master=resume.is_master,
+    )
+
+
 @app.get("/api/resumes", response_model=List[ResumeResponse])
 async def get_resumes(db: Session = Depends(get_db)):
     """Get all uploaded resumes."""
@@ -175,43 +266,6 @@ async def get_resumes(db: Session = Depends(get_db)):
         results.append(ResumeResponse(id=r.id, name=r.name, preview=preview, is_master=r.is_master))
 
     return results
-
-
-def extract_agent_data(result):
-    """Robustly extract data from an agent result object, handling various formats."""
-    log_debug(f"Result Type: {type(result)}")
-
-    # Log usage if available (token counts)
-    try:
-        if hasattr(result, "usage"):
-            usage = result.usage()
-            # PydanticAI Usage object uses request_tokens and response_tokens
-            total = getattr(usage, "total_tokens", 0)
-            request = getattr(usage, "request_tokens", 0)
-            response = getattr(usage, "response_tokens", 0)
-            log_debug(f"AI Interaction Summary -> Tokens: {total} (Request: {request}, Response: {response})")
-    except Exception as e:
-        log_debug(f"Could not extract usage info: {e}")
-
-    # Try .data attribute (standard pydantic-ai)
-    data = getattr(result, "data", None)
-    if data is not None:
-        return data
-
-    # Fallback to other common attributes
-    for attr in ["result", "output", "content", "message"]:
-        data = getattr(result, attr, None)
-        if data is not None:
-            log_debug(f"Found data in .{attr} attribute")
-            return data
-
-    # If it's a string or has a .text (some versions/fallbacks)
-    if hasattr(result, "text"):
-        log_debug("Found data in .text attribute")
-        return result.text
-
-    log_debug("Could not find structured data attribute. Returning result object itself.")
-    return result
 
 
 @app.post("/api/analyze")
@@ -226,14 +280,15 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
     # Run the AI agent
     try:
         if request.description:
-            job_input = f"the job description: {request.description}"
-            prompt = f"Tailor this resume for {job_input}\n\nResume Content:\n{resume.content}"
+            prompt = get_initial_tailoring_prompt(
+                resume_content=resume.content, job_source="the provided text", job_content=request.description
+            )
             log_ai_interaction("AI REQUEST (MANUAL)", prompt, "blue")
 
             # Use no-tools agent for manual entry to avoid tool call errors
             result = await resume_agent_no_tools.run(prompt)
         else:
-            prompt = f"Tailor this resume for the job at: {request.url}\n\nResume Content:\n{resume.content}"
+            prompt = get_initial_tailoring_prompt(resume.content, request.url)
             log_ai_interaction("AI REQUEST (URL)", prompt, "blue")
 
             result = await resume_agent.run(prompt)
@@ -245,14 +300,15 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
         import json
 
         # Log response nicely with more detail
+        # Safe stringification of values to handle MagicMocks in tests
         response_preview = {
-            "company": getattr(data, "company_name", "N/A"),
-            "title": getattr(data, "job_title", "N/A"),
-            "score": getattr(data, "match_score", 0),
-            "improvements": getattr(data, "key_improvements", []),
-            "extracted_jd": getattr(data, "extracted_job_description", ""),
-            "resume_html": getattr(data, "tailored_resume_html", ""),
-            "cover_letter_html": getattr(data, "cover_letter_html", ""),
+            "company": str(getattr(data, "company_name", "N/A")),
+            "title": str(getattr(data, "job_title", "N/A")),
+            "score": str(getattr(data, "match_score", 0)),
+            "improvements": [str(i) for i in getattr(data, "key_improvements", [])],
+            "extracted_jd": str(getattr(data, "extracted_job_description", "")),
+            "resume_html": str(getattr(data, "tailored_resume_html", "")),
+            "cover_letter_html": str(getattr(data, "cover_letter_html", "")),
         }
         log_ai_interaction("AI RESPONSE", json.dumps(response_preview, indent=2), "green", format="json")
 
@@ -308,10 +364,8 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
-
         log_error(f"Analysis failed with exception: {str(e)}")
-        print(traceback.format_exc())
+        log_debug(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 
@@ -405,9 +459,7 @@ async def generate_pdf(
 
     except Exception as e:
         log_error(f"PDF generation failed for Job ID {job_id}: {str(e)}")
-        import traceback
-
-        print(traceback.format_exc())
+        log_debug(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 
@@ -438,31 +490,16 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
     try:
         user_prompt = request.prompt or "Please regenerate the content."
 
-        # Construct the context for the agent
-        context = f"""
-Original Job Description:
-{job.original_jd or job.url}
-
-Original Resume:
-{resume.content}
-
-Current Tailored Resume:
-{job.tailored_resume}
-
-Current Cover Letter:
-{job.cover_letter}
-
-User Request for Regeneration:
-{user_prompt}
-
-TASK:
-1. Update the tailored resume (tailored_resume_html) following the user request.
-2. Update the cover letter (cover_letter_html) accordingly.
-3. Re-calculate the match score.
-4. Keep the company name '{job.company}' and job title '{job.title}'.
-
-Please provide the updated content in the required structured format.
-"""
+        # Construct the context for the agent using the template
+        context = get_regeneration_prompt(
+            resume_content=resume.content,
+            job_description=job.original_jd or job.url,
+            current_tailored=job.tailored_resume,
+            current_cover=job.cover_letter,
+            user_request=user_prompt,
+            company=job.company,
+            title=job.title,
+        )
         log_ai_interaction("REGENERATE REQUEST", context, "cyan")
 
         # We use resume_agent_no_tools since we already have all the info
@@ -474,10 +511,11 @@ Please provide the updated content in the required structured format.
             import json
 
             # Log response nicely
+            # Safe stringification of values to handle MagicMocks in tests
             response_preview = {
-                "score": getattr(data, "match_score", "N/A"),
-                "resume_html": getattr(data, "tailored_resume_html", ""),
-                "cover_letter_html": getattr(data, "cover_letter_html", ""),
+                "score": str(getattr(data, "match_score", "N/A")),
+                "resume_html": str(getattr(data, "tailored_resume_html", "")),
+                "cover_letter_html": str(getattr(data, "cover_letter_html", "")),
             }
             log_ai_interaction("REGENERATE RESPONSE", json.dumps(response_preview, indent=2), "green", format="json")
             # Update only if the field is present in the data AND it's a valid primitive/string
@@ -507,10 +545,8 @@ Please provide the updated content in the required structured format.
             raise HTTPException(status_code=500, detail="Failed to get data from agent")
 
     except Exception as e:
-        import traceback
-
         log_error(f"Regeneration failed: {str(e)}")
-        print(traceback.format_exc())
+        log_debug(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Regeneration failed: {str(e)}")
 
 

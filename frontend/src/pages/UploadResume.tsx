@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, ArrowLeft, Loader2, FileText, CheckCircle2, Globe } from 'lucide-react';
+import { Upload, ArrowLeft, Loader2, FileText, CheckCircle2, Globe, Clipboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { uploadResume, importResumeFromUrl } from '@/lib/api';
+import { uploadResume, importResumeFromUrl, addResumeManual } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -16,6 +17,7 @@ export default function UploadResume() {
     const [activeTab, setActiveTab] = useState('url');
     const [file, setFile] = useState<File | null>(null);
     const [resumeUrl, setResumeUrl] = useState('');
+    const [manualContent, setManualContent] = useState('');
     const [name, setName] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -94,12 +96,23 @@ export default function UploadResume() {
             return;
         }
 
+        if (activeTab === 'paste' && !pastedContent.trim()) {
+            toast({
+                title: 'Missing content',
+                description: 'Please paste your resume text',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         setIsUploading(true);
         try {
             if (activeTab === 'file' && file) {
                 await uploadResume(file, name);
             } else if (activeTab === 'url') {
                 await importResumeFromUrl(resumeUrl, name);
+            } else if (activeTab === 'manual') {
+                await addResumeManual(manualContent, name);
             }
 
             setIsSuccess(true);
@@ -132,7 +145,7 @@ export default function UploadResume() {
                     Back to Dashboard
                 </Button>
                 <h1 className="page-title">Add My Resume</h1>
-                <p className="page-description">Add your master resume (PDF or URL) for AI tailoring</p>
+                <p className="page-description">Add your master resume (PDF, URL, or Paste) for AI tailoring</p>
             </div>
 
             <div className="max-w-3xl">
@@ -152,14 +165,18 @@ export default function UploadResume() {
                         </div>
                     ) : (
                         <Tabs value={activeTab} onValueChange={setActiveTab}>
-                            <TabsList className="w-full grid grid-cols-2 m-4 max-w-md">
+                            <TabsList className="w-full grid grid-cols-3 m-4 max-w-lg">
                                 <TabsTrigger value="url" className="gap-2">
                                     <Globe className="h-4 w-4" />
                                     From URL
                                 </TabsTrigger>
                                 <TabsTrigger value="file" className="gap-2">
-                                    <FileText className="h-4 w-4" />
+                                    <Upload className="h-4 w-4" />
                                     PDF File
+                                </TabsTrigger>
+                                <TabsTrigger value="manual" className="gap-2">
+                                    <FileText className="h-4 w-4" />
+                                    Manual Entry
                                 </TabsTrigger>
                             </TabsList>
 
@@ -256,12 +273,33 @@ export default function UploadResume() {
                                             </div>
                                         </div>
                                     </TabsContent>
+                                    <TabsContent value="manual" className="mt-0">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="resume-manual" className="input-label">Resume Text <span className="text-destructive">*</span></Label>
+                                            <Textarea
+                                                id="resume-manual"
+                                                placeholder="Paste your resume text here..."
+                                                value={manualContent}
+                                                onChange={(e) => setManualContent(e.target.value)}
+                                                className="min-h-[300px] font-sans"
+                                            />
+                                            <p className="text-sm text-muted-foreground mt-1.5">
+                                                Our AI will automatically clean and format this into professional Markdown.
+                                            </p>
+                                        </div>
+                                    </TabsContent>
 
                                     <div className="pt-4">
                                         <Button
                                             type="submit"
                                             className="w-full h-12 text-base"
-                                            disabled={(activeTab === 'file' ? !file : !resumeUrl.trim()) || !name.trim() || isUploading}
+                                            disabled={
+                                                (activeTab === 'file' ? !file :
+                                                    activeTab === 'url' ? !resumeUrl.trim() :
+                                                        !manualContent.trim()) ||
+                                                !name.trim() ||
+                                                isUploading
+                                            }
                                         >
                                             {isUploading ? (
                                                 <>
@@ -269,7 +307,8 @@ export default function UploadResume() {
                                                     Processing Resume...
                                                 </>
                                             ) : (
-                                                activeTab === 'file' ? 'Upload and Process' : 'Import and Process'
+                                                activeTab === 'file' ? 'Upload and Process' :
+                                                    activeTab === 'url' ? 'Import and Process' : 'Clean and Save'
                                             )}
                                         </Button>
                                     </div>
