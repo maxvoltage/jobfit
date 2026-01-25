@@ -9,10 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 import { uploadResume, importResumeFromUrl, addResumeManual } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function UploadResume() {
     const navigate = useNavigate();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     const [activeTab, setActiveTab] = useState('url');
     const [file, setFile] = useState<File | null>(null);
@@ -114,6 +116,10 @@ export default function UploadResume() {
             } else if (activeTab === 'manual') {
                 await addResumeManual(manualContent, name);
             }
+
+            // Invalidate resumes query
+            queryClient.invalidateQueries({ queryKey: ['resumes'] });
+            queryClient.invalidateQueries({ queryKey: ['selectedResume'] });
 
             setIsSuccess(true);
             toast({

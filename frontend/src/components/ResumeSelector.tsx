@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Resume } from '@/types';
 import { cn } from '@/lib/utils';
 import { ResumeEditor } from './ResumeEditor';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ResumeSelectorProps {
     open: boolean;
@@ -32,6 +33,7 @@ export function ResumeSelector({
     onSelectResume,
     onResumeUpdate,
 }: ResumeSelectorProps) {
+    const queryClient = useQueryClient();
     // Find the currently selected resume or use the provided selectedResumeId
     const selectedResume = resumes.find(r => r.is_selected);
     const initialPreviewId = selectedResume ? selectedResume.id.toString() : selectedResumeId;
@@ -56,6 +58,10 @@ export function ResumeSelector({
             });
 
             onSelectResume(previewResumeId);
+
+            // Invalidate resumes query
+            queryClient.invalidateQueries({ queryKey: ['resumes'] });
+            queryClient.invalidateQueries({ queryKey: ['selectedResume'] });
 
             // Refresh the resumes list to update the selected state
             if (onResumeUpdate) {

@@ -8,37 +8,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { analyzeJobUrl, analyzeJobDescription, getResumes } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { AnalyzeJobResponse, Resume } from '@/types';
+import { Resume } from '@/types';
 import { ResumeSelector } from '@/components/ResumeSelector';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export default function NewApplication() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState('url');
   const [jobUrl, setJobUrl] = useState('');
   const [manualDescription, setManualDescription] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string>('');
   const [isResumeSelectorOpen, setIsResumeSelectorOpen] = useState(false);
 
-  const fetchResumes = async () => {
-    try {
-      const data = await getResumes();
-      setResumes(data);
-      if (data.length > 0 && !selectedResumeId) {
-        const selected = data.find(r => r.is_selected) || data[0];
-        setSelectedResumeId(selected.id.toString());
-      }
-    } catch (error) {
-      console.error('Failed to fetch resumes:', error);
-    }
-  };
+  const { data: resumes = [], refetch: refetchResumes } = useQuery({
+    queryKey: ['resumes'],
+    queryFn: getResumes,
+  });
 
   useEffect(() => {
-    fetchResumes();
-  }, []);
+    if (resumes.length > 0 && !selectedResumeId) {
+      const selected = resumes.find(r => r.is_selected) || resumes[0];
+      setSelectedResumeId(selected.id.toString());
+    }
+  }, [resumes, selectedResumeId]);
 
   const handleAnalyzeUrl = async () => {
     if (!jobUrl.trim()) {
@@ -53,11 +49,15 @@ export default function NewApplication() {
     setIsAnalyzing(true);
     try {
       const result = await analyzeJobUrl(jobUrl, parseInt(selectedResumeId));
+
+      // Invalidate applications query so dashboard refreshes
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+
       toast({
         title: 'Analysis Complete',
         description: 'Job analyzed successfully',
       });
-      // Redirect immediately since it's already saved
+
       if (result.id) {
         navigate(`/job/${result.id}`);
       }
@@ -85,11 +85,15 @@ export default function NewApplication() {
     setIsAnalyzing(true);
     try {
       const result = await analyzeJobDescription(manualDescription, parseInt(selectedResumeId));
+
+      // Invalidate applications query so dashboard refreshes
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+
       toast({
         title: 'Analysis Complete',
         description: 'Job description has been analyzed successfully',
       });
-      // Redirect immediately since it's already saved
+
       if (result.id) {
         navigate(`/job/${result.id}`);
       }
@@ -251,7 +255,7 @@ export default function NewApplication() {
         resumes={resumes}
         selectedResumeId={selectedResumeId}
         onSelectResume={setSelectedResumeId}
-        onResumeUpdate={fetchResumes}
+        onResumeUpdate={refetchResumes}
       />
     </div>
   );

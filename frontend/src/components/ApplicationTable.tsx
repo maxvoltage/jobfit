@@ -79,11 +79,10 @@ export function ApplicationTable({ applications, onDelete }: ApplicationTablePro
             </TableRow>
           </TableHeader>
           <TableBody>
-            {applications.map((application, index) => (
+            {applications.map((application) => (
               <TableRow
                 key={application.id}
-                className="cursor-pointer animate-fade-in"
-                style={{ animationDelay: `${index * 50}ms` }}
+                className="cursor-pointer"
                 onClick={() => handleView(application.id)}
               >
                 <TableCell className="text-muted-foreground">

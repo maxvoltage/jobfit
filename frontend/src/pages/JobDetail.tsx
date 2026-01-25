@@ -1,20 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
-
-
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, RefreshCw, Building2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Building2, Loader2, Edit2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { MatchScoreBadge } from '@/components/MatchScoreBadge';
 import { getApplication, regenerateContent, updateApplication, downloadJobPdf } from '@/lib/api';
-import { JobApplication } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { RichTextEditor } from '@/components/RichTextEditor';
-import { Edit2, Save, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,22 +22,58 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from '@/components/ui/textarea';
 import ReactMarkdown from 'react-markdown';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const [application, setApplication] = useState<JobApplication | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRegenerating, setIsRegenerating] = useState(false);
   const [activeTab, setActiveTab] = useState('resume');
   const [regenPrompt, setRegenPrompt] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedResume, setEditedResume] = useState('');
   const [editedCover, setEditedCover] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+
+  // Queries
+  const { data: application, isLoading } = useQuery({
+    queryKey: ['application', id],
+    queryFn: () => getApplication(id!),
+    enabled: !!id,
+    retry: false,
+  });
+
+  // Mutations
+  const updateMutation = useMutation({
+    mutationFn: (updates: any) => updateApplication(id!, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['application', id] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+    }
+  });
+
+  const regenerateMutation = useMutation({
+    mutationFn: () => regenerateContent(id!, regenPrompt),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['application', id] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      toast({
+        title: 'Regenerated',
+        description: 'Content has been regenerated successfully',
+      });
+      setRegenPrompt('');
+      setIsDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to regenerate content',
+        variant: 'destructive',
+      });
+    }
+  });
 
   // Helper to extract body content from HTML
   const extractBody = (html: string) => {
@@ -56,46 +88,9 @@ export default function JobDetail() {
     return originalHtml.replace(/(<body[^>]*>)([\s\S]*?)(<\/body>)/i, `$1${newBody}$3`);
   };
 
-  const loadApplication = useCallback(async (appId: string) => {
-    try {
-      const data = await getApplication(appId);
-      if (data) {
-        setApplication(data);
-      } else {
-        toast({
-          title: 'Not Found',
-          description: 'Application not found',
-          variant: 'destructive',
-        });
-        navigate('/');
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load application',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [navigate, toast]);
-
-  useEffect(() => {
-    if (id) {
-      loadApplication(id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-
-
-
   const handleAppliedChange = async (checked: boolean) => {
-    if (!id || !application) return;
-
     try {
-      await updateApplication(id, { applied: checked });
-      setApplication(prev => prev ? { ...prev, applied: checked } : null);
+      await updateMutation.mutateAsync({ applied: checked });
       toast({
         title: checked ? 'Marked as Applied' : 'Marked as Not Applied',
         description: 'Application status updated',
@@ -109,39 +104,8 @@ export default function JobDetail() {
     }
   };
 
-  const handleRegenerate = async () => {
-    if (!id) return;
-
-    setIsRegenerating(true);
-    setIsDialogOpen(false);
-    try {
-      const result = await regenerateContent(id, regenPrompt);
-      setApplication(prev => prev ? {
-        ...prev,
-        tailoredResume: result.resume,
-        coverLetter: result.coverLetter,
-        matchScore: result.matchScore ?? prev.matchScore,
-      } : null);
-      toast({
-        title: 'Regenerated',
-        description: 'Content has been regenerated successfully',
-      });
-      setRegenPrompt('');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to regenerate content',
-        variant: 'destructive',
-      });
-    } finally {
-
-      setIsRegenerating(false);
-    }
-  };
-
   const handleDownloadPdf = async () => {
-    if (!id || !application) return;
-
+    if (!id) return;
     try {
       await downloadJobPdf(id, activeTab as 'resume' | 'cover');
       toast({
@@ -159,32 +123,20 @@ export default function JobDetail() {
 
   const handleStartEdit = () => {
     if (!application) return;
-    setEditedResume(extractBody(application.tailoredResume));
-    setEditedCover(extractBody(application.coverLetter));
+    setEditedResume(extractBody(application.tailoredResume || ''));
+    setEditedCover(extractBody(application.coverLetter || ''));
     setIsEditing(true);
   };
 
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-  };
-
   const handleSaveEdit = async () => {
-    if (!id || !application) return;
-
-    setIsSaving(true);
+    if (!application) return;
     try {
-      const fullResume = rewrapBody(application.tailoredResume, editedResume);
-      const fullCover = rewrapBody(application.coverLetter, editedCover);
+      const fullResume = rewrapBody(application.tailoredResume || '', editedResume);
+      const fullCover = rewrapBody(application.coverLetter || '', editedCover);
 
-      await updateApplication(id, {
+      await updateMutation.mutateAsync({
         tailored_resume: fullResume,
         cover_letter: fullCover
-      });
-
-      setApplication({
-        ...application,
-        tailoredResume: fullResume,
-        coverLetter: fullCover
       });
 
       toast({
@@ -198,8 +150,6 @@ export default function JobDetail() {
         description: 'Failed to save changes',
         variant: 'destructive',
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -217,7 +167,14 @@ export default function JobDetail() {
   }
 
   if (!application) {
-    return null;
+    return (
+      <div className="page-container">
+        <div className="text-center py-20">
+          <h2 className="text-2xl font-bold">Application Not Found</h2>
+          <Button onClick={() => navigate('/')} className="mt-4">Back to Dashboard</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -266,9 +223,9 @@ export default function JobDetail() {
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
-                        disabled={isRegenerating}
+                        disabled={regenerateMutation.isPending}
                       >
-                        {isRegenerating ? (
+                        {regenerateMutation.isPending ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
                           <RefreshCw className="mr-2 h-4 w-4" />
@@ -295,10 +252,10 @@ export default function JobDetail() {
                       <DialogFooter>
                         <Button
                           type="submit"
-                          onClick={handleRegenerate}
-                          disabled={isRegenerating}
+                          onClick={() => regenerateMutation.mutate()}
+                          disabled={regenerateMutation.isPending}
                         >
-                          {isRegenerating ? "Regenerating..." : "Start Regeneration"}
+                          {regenerateMutation.isPending ? "Regenerating..." : "Start Regeneration"}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -314,12 +271,12 @@ export default function JobDetail() {
                 </>
               ) : (
                 <>
-                  <Button variant="ghost" onClick={handleCancelEdit} disabled={isSaving}>
+                  <Button variant="ghost" onClick={() => setIsEditing(false)} disabled={updateMutation.isPending}>
                     <X className="mr-2 h-4 w-4" />
                     Cancel
                   </Button>
-                  <Button onClick={handleSaveEdit} disabled={isSaving}>
-                    {isSaving ? (
+                  <Button onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+                    {updateMutation.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Save className="mr-2 h-4 w-4" />

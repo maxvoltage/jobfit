@@ -1,59 +1,53 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Briefcase, TrendingUp, TrendingDown, CheckCircle, Clock, Loader2 } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useMemo } from 'react';
+import { Briefcase, TrendingUp, TrendingDown, CheckCircle, Clock } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { ApplicationTable } from '@/components/ApplicationTable';
 import { getApplications, deleteApplication, getSelectedResume } from '@/lib/api';
-import { JobApplication, Resume } from '@/types';
+import { FilterType, JobApplication } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-
-type FilterType = 'all' | 'high' | 'medium' | 'applied' | 'tbd';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function Dashboard() {
-  const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { toast } = useToast();
 
   const [activeFilter, setActiveFilter] = useState<FilterType>(() => {
     const urlFilter = searchParams.get('filter') as FilterType;
-    if (urlFilter) return urlFilter;
+    if (urlFilter) return urlFilter as FilterType;
     return (localStorage.getItem('dashboardFilter') as FilterType) || 'all';
   });
 
-  const { toast } = useToast();
+  // Queries
+  const { data: applications = [], isLoading: isAppsLoading } = useQuery({
+    queryKey: ['applications'],
+    queryFn: getApplications,
+  });
 
-  const loadSelectedResume = useCallback(async () => {
-    try {
-      const resume = await getSelectedResume();
-      if (resume) setSelectedResume(resume);
-    } catch (error: unknown) {
-      console.error('Failed to load selected resume:', error);
-    }
-  }, []);
+  const { data: selectedResume } = useQuery({
+    queryKey: ['selectedResume'],
+    queryFn: getSelectedResume,
+  });
 
-  const loadApplications = useCallback(async () => {
-    try {
-      const data = await getApplications();
-      setApplications(data);
-    } catch (error: unknown) {
+  // Mutations
+  const deleteMutation = useMutation({
+    mutationFn: deleteApplication,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      toast({
+        title: 'Deleted',
+        description: 'Application removed successfully',
+      });
+    },
+    onError: () => {
       toast({
         title: 'Error',
-        description: 'Failed to load applications',
+        description: 'Failed to delete application',
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
     }
-  }, [toast]);
-
-  useEffect(() => {
-    loadApplications();
-    loadSelectedResume();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  });
 
   useEffect(() => {
     if (activeFilter === 'all') {
@@ -68,23 +62,6 @@ export default function Dashboard() {
 
   const handleFilterChange = (filter: FilterType) => {
     setActiveFilter(filter);
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteApplication(id);
-      setApplications(prev => prev.filter(app => app.id !== id));
-      toast({
-        title: 'Deleted',
-        description: 'Application removed successfully',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete application',
-        variant: 'destructive',
-      });
-    }
   };
 
   const stats = useMemo(() => [
@@ -170,7 +147,7 @@ export default function Dashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-        {stats.map((stat, index) => {
+        {stats.map((stat) => {
           const isActive = activeFilter === stat.key;
           return (
             <button
@@ -182,7 +159,6 @@ export default function Dashboard() {
                 isActive && "ring-2 ring-primary"
               )}
             >
-
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
@@ -205,15 +181,19 @@ export default function Dashboard() {
         <h2 className="section-title">
           {activeFilter === 'all' ? 'All Applications' : `${stats.find(s => s.key === activeFilter)?.label} Applications`}
         </h2>
-        {isLoading ? (
+        {isAppsLoading && applications.length === 0 ? (
           <div className="card-elevated p-12 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
             <p className="mt-4 text-muted-foreground">Loading applications...</p>
           </div>
         ) : (
-          <ApplicationTable applications={filteredApplications} onDelete={handleDelete} />
+          <ApplicationTable
+            applications={filteredApplications}
+            onDelete={(id) => deleteMutation.mutate(id)}
+          />
         )}
       </div>
     </div>
   );
 }
+
