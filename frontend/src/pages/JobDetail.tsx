@@ -47,7 +47,7 @@ export default function JobDetail() {
 
   // Mutations
   const updateMutation = useMutation({
-    mutationFn: (updates: any) => updateApplication(id!, updates),
+    mutationFn: (updates: Partial<JobApplication>) => updateApplication(id!, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['application', id] });
       queryClient.invalidateQueries({ queryKey: ['applications'] });

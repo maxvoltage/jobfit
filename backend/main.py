@@ -233,19 +233,19 @@ async def add_resume_manual(request: ResumeManualRequest, db: Session = Depends(
         result = await clean_resume_agent.run(request.content)
         cleaned_content = extract_agent_data(result)
         log_ai_interaction("CLEAN RESUME RESPONSE", cleaned_content, "green")
-        
+
         # Strip markdown code fences if present (AI sometimes wraps in ```markdown```)
         cleaned_content = cleaned_content.strip()
-        if cleaned_content.startswith('```markdown') or cleaned_content.startswith('```'):
-            lines = cleaned_content.split('\n')
+        if cleaned_content.startswith("```markdown") or cleaned_content.startswith("```"):
+            lines = cleaned_content.split("\n")
             # Remove first line if it's a code fence
-            if lines[0].startswith('```'):
+            if lines[0].startswith("```"):
                 lines.pop(0)
             # Remove last line if it's a closing fence
-            if lines and lines[-1].strip() == '```':
+            if lines and lines[-1].strip() == "```":
                 lines.pop()
-            cleaned_content = '\n'.join(lines)
-        
+            cleaned_content = "\n".join(lines)
+
     except Exception as e:
         log_error(f"Resume cleaning failed: {str(e)}")
         log_debug(f"Full Error Traceback:\n{traceback.format_exc()}")
@@ -287,32 +287,31 @@ async def get_resumes(db: Session = Depends(get_db)):
     return results
 
 
-
 @app.put("/api/resumes/{resume_id}", response_model=ResumeResponse)
 async def update_resume(resume_id: int, request: ResumeUpdateRequest, db: Session = Depends(get_db)):
     """Update an existing resume."""
     log_debug(f"Updating resume ID: {resume_id}")
-    
+
     resume = db.query(models.Resume).filter(models.Resume.id == resume_id).first()
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
-    
+
     # Update fields
     resume.name = request.name
     resume.content = request.content
     resume.updated_at = datetime.now(UTC)  # Manually update timestamp
-    
+
     # If setting this as selected, deselect all others
     if request.is_selected and not resume.is_selected:
         db.query(models.Resume).update({models.Resume.is_selected: False})
-    
+
     resume.is_selected = request.is_selected
-    
+
     db.commit()
     db.refresh(resume)
-    
+
     log_debug(f"Successfully updated resume ID: {resume.id}")
-    
+
     return ResumeResponse(
         id=resume.id,
         name=resume.name,
@@ -325,30 +324,29 @@ async def update_resume(resume_id: int, request: ResumeUpdateRequest, db: Sessio
 async def set_selected_resume(resume_id: int, db: Session = Depends(get_db)):
     """Set a resume as the currently selected one."""
     log_debug(f"Setting resume ID {resume_id} as selected")
-    
+
     resume = db.query(models.Resume).filter(models.Resume.id == resume_id).first()
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
-    
+
     # Deselect all other resumes
     db.query(models.Resume).update({models.Resume.is_selected: False})
-    
+
     # Select this one
     resume.is_selected = True
     resume.updated_at = datetime.now(UTC)
-    
+
     db.commit()
     db.refresh(resume)
-    
+
     log_debug(f"Resume ID {resume_id} is now the selected resume")
-    
+
     return ResumeResponse(
         id=resume.id,
         name=resume.name,
         preview=resume.content,
         is_selected=resume.is_selected,
     )
-
 
 
 @app.post("/api/analyze")

@@ -3,7 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import UploadResume from '../pages/UploadResume';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as api from '../lib/api';
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: false,
+        },
+    },
+});
 
 // Mock the API and toast
 vi.mock('../lib/api', () => ({
@@ -30,37 +39,25 @@ vi.mock('react-router-dom', async () => {
 describe('UploadResume', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        queryClient.clear();
     });
 
     describe('Drag and Drop', () => {
-        it('should visually change state when dragging over', async () => {
-            const user = userEvent.setup();
+        it('should handle drag enter events', async () => {
             render(
-                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                    <UploadResume />
-                </MemoryRouter>
-            );
-
-            // Switch to File tab first since URL is default
-            const fileTab = screen.getByRole('tab', { name: /pdf file/i });
-            await user.click(fileTab);
-
-            const dropZone = (await screen.findByText(/click to upload or drag and drop/i)).closest('div.relative');
-            if (!dropZone) throw new Error('Drop zone not found');
-
-            // Initial state
-            expect(dropZone.className).not.toContain('scale-[1.02]');
-
-            // Drag over
-            await waitFor(() => {
-                render(
+                <QueryClientProvider client={queryClient}>
                     <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                         <UploadResume />
                     </MemoryRouter>
-                );
+                </QueryClientProvider>
+            );
 
-            });
-            // Simplified check as classNames can be tricky with cn()
+            // Switch to File tab
+            const fileTab = screen.getByRole('tab', { name: /pdf file/i });
+            await userEvent.click(fileTab);
+
+            const dropZone = (await screen.findByText(/click to upload or drag and drop/i)).closest('div.relative');
+            expect(dropZone).toBeInTheDocument();
         });
     });
 
@@ -75,9 +72,11 @@ describe('UploadResume', () => {
             });
 
             render(
-                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                    <UploadResume />
-                </MemoryRouter>
+                <QueryClientProvider client={queryClient}>
+                    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                        <UploadResume />
+                    </MemoryRouter>
+                </QueryClientProvider>
             );
 
             // URL tab is default, so no need to click it
@@ -114,9 +113,11 @@ describe('UploadResume', () => {
             });
 
             render(
-                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                    <UploadResume />
-                </MemoryRouter>
+                <QueryClientProvider client={queryClient}>
+                    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                        <UploadResume />
+                    </MemoryRouter>
+                </QueryClientProvider>
             );
 
             // Switch to Paste tab

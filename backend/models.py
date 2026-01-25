@@ -24,12 +24,12 @@ class Resume(Base):
     is_master: Mapped[bool] = mapped_column(default=False)  # Deprecated, use is_selected
     is_selected: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
 
     # Relationship to Jobs
     jobs: Mapped[List["Job"]] = relationship(back_populates="resume", cascade="all, delete-orphan")
-
-
 
 
 class Job(Base):

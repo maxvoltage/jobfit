@@ -3,7 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Dashboard from '../pages/Dashboard';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as api from '../lib/api';
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: false,
+        },
+    },
+});
 
 // Mock the API and toast
 vi.mock('../lib/api', () => ({
@@ -43,6 +52,7 @@ describe('Dashboard Page', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         localStorage.clear();
+        queryClient.clear();
         vi.mocked(api.getApplications).mockResolvedValue(mockApplications as unknown as JobApplication[]);
         vi.mocked(api.getSelectedResume).mockResolvedValue({ id: 1, name: 'First Resume', is_selected: true } as unknown as Resume);
     });
@@ -50,9 +60,11 @@ describe('Dashboard Page', () => {
 
     it('should load and display applications', async () => {
         render(
-            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Dashboard />
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Dashboard />
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         expect(screen.getByText(/Loading applications/i)).toBeInTheDocument();
@@ -67,9 +79,11 @@ describe('Dashboard Page', () => {
     it('should filter applications when clicking stats cards', async () => {
         const user = userEvent.setup();
         render(
-            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Dashboard />
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Dashboard />
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         await screen.findByText('High Match Corp');
@@ -94,9 +108,11 @@ describe('Dashboard Page', () => {
         vi.mocked(api.deleteApplication).mockResolvedValue(undefined);
 
         render(
-            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Dashboard />
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Dashboard />
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         // Wait for applications to load
@@ -104,6 +120,9 @@ describe('Dashboard Page', () => {
 
         // Find delete buttons by aria-label
         const deleteButtons = await screen.findAllByRole('button', { name: /delete/i });
+
+        // Mock next call to return updated list
+        vi.mocked(api.getApplications).mockResolvedValue(mockApplications.slice(1) as unknown as JobApplication[]);
 
         // Use stopPropagation in the component means we should be able to click it directly
         await user.click(deleteButtons[0]);

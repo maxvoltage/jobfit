@@ -3,7 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import JobDetail from '../pages/JobDetail';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as api from '../lib/api';
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: false,
+        },
+    },
+});
 
 // Mock the API and toast
 vi.mock('../lib/api', () => ({
@@ -45,16 +54,19 @@ describe('JobDetail Page', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        queryClient.clear();
         vi.mocked(api.getApplication).mockResolvedValue(mockJob as unknown as JobApplication);
     });
 
     it('should load and display job details', async () => {
         render(
-            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/job/:id" element={<JobDetail />} />
-                </Routes>
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Routes>
+                        <Route path="/job/:id" element={<JobDetail />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         expect(screen.getByText(/Loading application/i)).toBeInTheDocument();
@@ -71,17 +83,22 @@ describe('JobDetail Page', () => {
         vi.mocked(api.updateApplication).mockResolvedValue({ ...mockJob, applied: true, status: 'applied' } as unknown as JobApplication);
 
         render(
-            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/job/:id" element={<JobDetail />} />
-                </Routes>
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Routes>
+                        <Route path="/job/:id" element={<JobDetail />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         await waitFor(() => screen.getByText('Test Company'));
 
         const checkbox = screen.getByRole('checkbox', { name: /applied/i });
         expect(checkbox).not.toBeChecked();
+
+        // Mock next getApplication call to return applied status
+        vi.mocked(api.getApplication).mockResolvedValue({ ...mockJob, applied: true, status: 'applied' } as unknown as JobApplication);
 
         await user.click(checkbox);
 
@@ -99,17 +116,22 @@ describe('JobDetail Page', () => {
         vi.mocked(api.updateApplication).mockResolvedValue({ ...mockJob, applied: false, status: 'todo' } as unknown as JobApplication);
 
         render(
-            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/job/:id" element={<JobDetail />} />
-                </Routes>
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Routes>
+                        <Route path="/job/:id" element={<JobDetail />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         await waitFor(() => screen.getByText('Test Company'));
 
         const checkbox = screen.getByRole('checkbox', { name: /applied/i });
         expect(checkbox).toBeChecked();
+
+        // Mock next call to return unapplied
+        vi.mocked(api.getApplication).mockResolvedValue({ ...mockJob, applied: false, status: 'todo' } as unknown as JobApplication);
 
         await user.click(checkbox);
 
@@ -123,11 +145,13 @@ describe('JobDetail Page', () => {
     it('should switch between resume and cover letter tabs', async () => {
         const user = userEvent.setup();
         render(
-            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/job/:id" element={<JobDetail />} />
-                </Routes>
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Routes>
+                        <Route path="/job/:id" element={<JobDetail />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         await waitFor(() => screen.getByText('Test Company'));
@@ -152,11 +176,13 @@ describe('JobDetail Page', () => {
         });
 
         render(
-            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/job/:id" element={<JobDetail />} />
-                </Routes>
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Routes>
+                        <Route path="/job/:id" element={<JobDetail />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         await waitFor(() => screen.getByText('Test Company'));
@@ -170,6 +196,14 @@ describe('JobDetail Page', () => {
         await user.type(textarea, 'Better resume please');
 
         const startButton = screen.getByRole('button', { name: /start regeneration/i });
+        // Mock next call to return regenerated content
+        vi.mocked(api.getApplication).mockResolvedValue({
+            ...mockJob,
+            tailoredResume: '<html>Regenerated Resume</html>',
+            coverLetter: '<html>Regenerated Cover Letter</html>',
+            matchScore: 95
+        } as unknown as JobApplication);
+
         await user.click(startButton);
 
         expect(api.regenerateContent).toHaveBeenCalledWith('1', 'Better resume please');
@@ -182,11 +216,13 @@ describe('JobDetail Page', () => {
     it('should call downloadJobPdf with correct type when download button is clicked', async () => {
         const user = userEvent.setup();
         render(
-            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/job/:id" element={<JobDetail />} />
-                </Routes>
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Routes>
+                        <Route path="/job/:id" element={<JobDetail />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         await waitFor(() => screen.getByText('Test Company'));
@@ -214,11 +250,13 @@ describe('JobDetail Page', () => {
         vi.mocked(api.updateApplication).mockResolvedValue(jobWithBody as unknown as JobApplication);
 
         render(
-            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/job/:id" element={<JobDetail />} />
-                </Routes>
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Routes>
+                        <Route path="/job/:id" element={<JobDetail />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         await waitFor(() => screen.getByText('Test Company'));
@@ -254,11 +292,13 @@ describe('JobDetail Page', () => {
     it('should allow canceling edit mode', async () => {
         const user = userEvent.setup();
         render(
-            <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <Routes>
-                    <Route path="/job/:id" element={<JobDetail />} />
-                </Routes>
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Routes>
+                        <Route path="/job/:id" element={<JobDetail />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         await waitFor(() => screen.getByText('Test Company'));

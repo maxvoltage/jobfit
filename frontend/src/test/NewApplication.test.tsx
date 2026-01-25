@@ -3,7 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import NewApplication from '../pages/NewApplication';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as api from '../lib/api';
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: false,
+        },
+    },
+});
 
 // Mock the API and toast
 vi.mock('../lib/api', () => ({
@@ -31,6 +40,7 @@ vi.mock('react-router-dom', async () => {
 describe('NewApplication Auto-save and Redirect', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        queryClient.clear();
         vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'Resume 1', content: 'Mock content', is_selected: true }]);
     });
 
@@ -49,9 +59,11 @@ describe('NewApplication Auto-save and Redirect', () => {
 
 
         render(
-            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <NewApplication />
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <NewApplication />
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         // Wait for resumes to load
@@ -91,9 +103,11 @@ describe('NewApplication Auto-save and Redirect', () => {
         vi.mocked(api.getResumes).mockResolvedValue(resumes);
 
         render(
-            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <NewApplication />
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <NewApplication />
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
 
@@ -109,9 +123,11 @@ describe('NewApplication Auto-save and Redirect', () => {
         vi.mocked(api.getResumes).mockResolvedValue([]);
 
         render(
-            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <NewApplication />
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <NewApplication />
+                </MemoryRouter>
+            </QueryClientProvider>
         );
 
         await waitFor(() => {
