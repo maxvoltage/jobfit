@@ -172,5 +172,6 @@ Detailed setup instructions and validation rules are located in the `/backend` a
 
 ## Possible Future Improvements
 
-- Multi user support: Currently, the application is designed for a single user. Future improvements could include user authentication and authorization to allow multiple users to access their own resumes and applications.
-- More granular tailoring controls: Allow users to specify exactly which sections of the resume to focus on or ignore during tailoring.
+- Multi user support: Currently, the application is designed for a single user. Future improvements could include user authentication and authorization to allow multiple users to access only their own resumes and applications.
+- Scrape job sites and suggest jobs for the users using match percentage
+- Stable match percentage via granular scoring sheet
