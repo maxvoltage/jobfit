@@ -27,3 +27,4 @@ export interface Resume {
   content: string;
   is_selected: boolean;
 }
+export type FilterType = 'all' | 'high' | 'medium' | 'applied' | 'tbd';

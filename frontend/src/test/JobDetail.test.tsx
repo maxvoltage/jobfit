@@ -278,8 +278,8 @@ describe('JobDetail Page', () => {
         // Verify updateApplication was called with the content
         await waitFor(() => {
             expect(api.updateApplication).toHaveBeenCalledWith('1', expect.objectContaining({
-                tailored_resume: expect.any(String),
-                cover_letter: expect.any(String)
+                tailoredResume: expect.any(String),
+                coverLetter: expect.any(String)
             }));
         });
 

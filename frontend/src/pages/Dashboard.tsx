@@ -1,17 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Briefcase, TrendingUp, TrendingDown, CheckCircle, Clock } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { Briefcase, TrendingUp, TrendingDown, CheckCircle, Clock, FileText } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { ApplicationTable } from '@/components/ApplicationTable';
-import { getApplications, deleteApplication, getSelectedResume } from '@/lib/api';
-import { FilterType, JobApplication } from '@/types';
+import { getApplications, deleteApplication, getSelectedResume, getResumes } from '@/lib/api';
+import { FilterType } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { ResumeSelector } from '@/components/ResumeSelector';
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+
+  const [isResumeSelectorOpen, setIsResumeSelectorOpen] = useState(false);
 
   const [activeFilter, setActiveFilter] = useState<FilterType>(() => {
     const urlFilter = searchParams.get('filter') as FilterType;
@@ -28,6 +32,11 @@ export default function Dashboard() {
   const { data: selectedResume } = useQuery({
     queryKey: ['selectedResume'],
     queryFn: getSelectedResume,
+  });
+
+  const { data: resumes = [] } = useQuery({
+    queryKey: ['resumes'],
+    queryFn: getResumes,
   });
 
   // Mutations
@@ -137,11 +146,26 @@ export default function Dashboard() {
   return (
     <div className="page-container">
       <div className="page-header flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="page-title">Dashboard</h1>
-          <p className="page-description">
-            {selectedResume ? `Currently Selected Resume: ${selectedResume.name}` : 'Track and manage your job applications'}
-          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Currently Selected Resume:</span>
+            {resumes.length > 0 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsResumeSelectorOpen(true)}
+                className="h-8 py-0 px-2 font-normal text-xs"
+              >
+                <FileText className="mr-1.5 h-3.5 w-3.5" />
+                {selectedResume ? selectedResume.name : 'Select a resume'}
+              </Button>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                No resumes found. <Link to="/upload" className="text-primary hover:underline">Upload one first</Link>
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -193,6 +217,21 @@ export default function Dashboard() {
           />
         )}
       </div>
+
+      <ResumeSelector
+        open={isResumeSelectorOpen}
+        onOpenChange={setIsResumeSelectorOpen}
+        resumes={resumes}
+        selectedResumeId={selectedResume?.id?.toString() || ''}
+        onSelectResume={() => {
+          queryClient.invalidateQueries({ queryKey: ['selectedResume'] });
+          queryClient.invalidateQueries({ queryKey: ['resumes'] });
+        }}
+        onResumeUpdate={() => {
+          queryClient.invalidateQueries({ queryKey: ['resumes'] });
+          queryClient.invalidateQueries({ queryKey: ['selectedResume'] });
+        }}
+      />
     </div>
   );
 }

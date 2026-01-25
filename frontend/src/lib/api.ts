@@ -57,10 +57,21 @@ export async function getApplication(id: string): Promise<JobApplication | undef
 }
 
 export async function updateApplication(id: string, updates: Partial<JobApplication>): Promise<JobApplication | undefined> {
+  // Map frontend camelCase to backend snake_case
+  const backendUpdates: Record<string, unknown> = { ...updates as Record<string, unknown> };
+  if (updates.tailoredResume !== undefined) {
+    backendUpdates.tailored_resume = updates.tailoredResume;
+    delete backendUpdates.tailoredResume;
+  }
+  if (updates.coverLetter !== undefined) {
+    backendUpdates.cover_letter = updates.coverLetter;
+    delete backendUpdates.coverLetter;
+  }
+
   const response = await fetch(`${API_BASE_URL}/jobs/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates),
+    body: JSON.stringify(backendUpdates),
   });
 
   if (!response.ok) throw new Error('Failed to update application');

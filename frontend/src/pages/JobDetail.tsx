@@ -1,14 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, RefreshCw, Building2, Loader2, Edit2, Save, X } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Building2, Loader2, Edit2, Save, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { MatchScoreBadge } from '@/components/MatchScoreBadge';
-import { getApplication, regenerateContent, updateApplication, downloadJobPdf } from '@/lib/api';
+import { getApplication, regenerateContent, updateApplication, downloadJobPdf, deleteApplication } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import {
@@ -20,9 +20,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from '@/components/ui/textarea';
 import ReactMarkdown from 'react-markdown';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { JobApplication } from '@/types';
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +63,25 @@ export default function JobDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['application', id] });
       queryClient.invalidateQueries({ queryKey: ['applications'] });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteApplication(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      toast({
+        title: 'Deleted',
+        description: 'Application removed successfully',
+      });
+      navigate('/');
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete application',
+        variant: 'destructive',
+      });
     }
   });
 
@@ -135,8 +166,8 @@ export default function JobDetail() {
       const fullCover = rewrapBody(application.coverLetter || '', editedCover);
 
       await updateMutation.mutateAsync({
-        tailored_resume: fullResume,
-        cover_letter: fullCover
+        tailoredResume: fullResume,
+        coverLetter: fullCover
       });
 
       toast({
@@ -268,6 +299,31 @@ export default function JobDetail() {
                     <Download className="mr-2 h-4 w-4" />
                     Download PDF
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete the application for <strong>{application.jobTitle}</strong> at <strong>{application.companyName}</strong>. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteMutation.mutate(id!)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </>
               ) : (
                 <>

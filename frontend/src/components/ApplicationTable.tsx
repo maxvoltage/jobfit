@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Eye, Download, Trash2, MoreHorizontal, Check, X } from 'lucide-react';
-import { downloadJobPdf } from '@/lib/api';
+import { Eye, Trash2, MoreHorizontal, Check, X } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -22,6 +21,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { MatchScoreBadge } from '@/components/MatchScoreBadge';
 import { JobApplication } from '@/types';
 import { format } from 'date-fns';
@@ -38,15 +48,6 @@ export function ApplicationTable({ applications, onDelete }: ApplicationTablePro
 
   const handleView = (id: string) => {
     navigate(`/job/${id}`);
-  };
-
-  const handleDownloadPdf = async (e: React.MouseEvent, application: JobApplication) => {
-    e.stopPropagation();
-    try {
-      await downloadJobPdf(application.id, 'resume');
-    } catch (error) {
-      console.error('Failed to download PDF:', error);
-    }
   };
 
   if (applications.length === 0) {
@@ -101,60 +102,38 @@ export function ApplicationTable({ applications, onDelete }: ApplicationTablePro
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  {isMobile ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => handleDownloadPdf(e, application)}>
-                          <Download className="mr-2 h-4 w-4" />
-                          Download PDF
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => { e.stopPropagation(); onDelete(application.id); }}
-                          className="text-destructive focus:text-destructive"
+                  <div className="flex items-center justify-end gap-1">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label="Delete"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : (
-                    <div className="flex items-center justify-end gap-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => handleDownloadPdf(e, application)}
-                            aria-label="Download PDF"
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the application for <strong>{application.jobTitle}</strong> at <strong>{application.companyName}</strong>. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => onDelete(application.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Download PDF</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={(e) => { e.stopPropagation(); onDelete(application.id); }}
-                            aria-label="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Delete</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  )}
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

@@ -19,6 +19,7 @@ vi.mock('../lib/api', () => ({
     getApplications: vi.fn(),
     deleteApplication: vi.fn(),
     getSelectedResume: vi.fn(),
+    getResumes: vi.fn(),
 }));
 
 vi.mock('../hooks/use-toast', () => ({
@@ -55,6 +56,7 @@ describe('Dashboard Page', () => {
         queryClient.clear();
         vi.mocked(api.getApplications).mockResolvedValue(mockApplications as unknown as JobApplication[]);
         vi.mocked(api.getSelectedResume).mockResolvedValue({ id: 1, name: 'First Resume', is_selected: true } as unknown as Resume);
+        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'First Resume', content: '...', is_selected: true } as unknown as Resume]);
     });
 
 
@@ -121,16 +123,44 @@ describe('Dashboard Page', () => {
         // Find delete buttons by aria-label
         const deleteButtons = await screen.findAllByRole('button', { name: /delete/i });
 
+        // Click the first delete button to open the confirmation dialog
+        await user.click(deleteButtons[0]);
+
         // Mock next call to return updated list
         vi.mocked(api.getApplications).mockResolvedValue(mockApplications.slice(1) as unknown as JobApplication[]);
 
-        // Use stopPropagation in the component means we should be able to click it directly
-        await user.click(deleteButtons[0]);
+        // Find and click the "Delete" button in the AlertDialog
+        const confirmDeleteButton = screen.getByRole('button', { name: /^delete$/i });
+        await user.click(confirmDeleteButton);
 
         expect(api.deleteApplication).toHaveBeenCalledWith('1');
 
         await waitFor(() => {
             expect(screen.queryByText('High Match Corp')).not.toBeInTheDocument();
         });
+    });
+
+    it('should show the selected resume and allow opening the selector', async () => {
+        const user = userEvent.setup();
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Dashboard />
+                </MemoryRouter>
+            </QueryClientProvider>
+        );
+
+        // Wait for resume to load
+        await screen.findByText('First Resume');
+
+        // Check if the button is there
+        const resumeButton = screen.getByRole('button', { name: /first resume/i });
+        expect(resumeButton).toBeInTheDocument();
+
+        // Click to open selector
+        await user.click(resumeButton);
+
+        // Should see the selector dialog title
+        expect(screen.getByText(/select your resume/i)).toBeInTheDocument();
     });
 });

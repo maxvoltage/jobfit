@@ -78,7 +78,6 @@ JobFit is a full-stack web application with a React frontend and FastAPI backend
    User submits job URL → Backend scrapes with Jina AI
    or pastes job description
    → AI agent analyzes + tailors resume → Saves to database → Returns results
-   ```
 
    User clicks "Edit Text" → Tiptap editor loads HTML body → 
    User makes changes → Frontend re-wraps with original styles → 
@@ -88,7 +87,7 @@ JobFit is a full-stack web application with a React frontend and FastAPI backend
    ```
 
 4. **PDF Download**
-   
+   ```
    Returns PDF file separately, the resume and the cover letter
    ```
 
