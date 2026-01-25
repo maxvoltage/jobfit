@@ -163,7 +163,7 @@ export async function uploadResume(file: File, name?: string): Promise<Resume> {
     id: data.id,
     name: data.name,
     content: data.preview, // We use preview in the UI
-    is_master: data.is_master,
+    is_selected: data.is_selected,
   };
 }
 
@@ -184,7 +184,7 @@ export async function importResumeFromUrl(url: string, name?: string): Promise<R
     id: data.id,
     name: data.name,
     content: data.preview,
-    is_master: data.is_master,
+    is_selected: data.is_selected,
   };
 }
 
@@ -213,7 +213,7 @@ export async function addResumeManual(content: string, name?: string): Promise<R
     id: data.id,
     name: data.name,
     content: data.preview,
-    is_master: data.is_master,
+    is_selected: data.is_selected,
   };
 }
 
@@ -221,18 +221,18 @@ export async function getResumes(): Promise<Resume[]> {
   const response = await fetch(`${API_BASE_URL}/resumes`);
   if (!response.ok) throw new Error('Failed to fetch resumes');
   const data = await response.json();
-  return data.map((r: { id: number; name: string; preview: string; is_master: boolean }) => ({
+  return data.map((r: { id: number; name: string; preview: string; is_selected: boolean }) => ({
     id: r.id,
     name: r.name,
     content: r.preview || '',
-    is_master: r.is_master,
+    is_selected: r.is_selected,
   }));
 }
 
 
-export async function getMasterResume(): Promise<Resume | undefined> {
+export async function getSelectedResume(): Promise<Resume | undefined> {
   const resumes = await getResumes();
-  return resumes.find(r => r.is_master) || resumes[0];
+  return resumes.find(r => r.is_selected) || resumes[0];
 }
 
 export async function downloadJobPdf(jobId: string, type: 'resume' | 'cover' = 'resume') {

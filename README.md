@@ -174,4 +174,4 @@ Detailed setup instructions and validation rules are located in the `/backend` a
 ## Possible Future Improvements
 
 - Multi user support: Currently, the application is designed for a single user. Future improvements could include user authentication and authorization to allow multiple users to access their own resumes and applications.
-- Uploaded resume history: Currently, the application only stores the most recent resume and application. Future improvements could include a history of uploaded resumes and applications to allow users to access previous versions.
+- More granular tailoring controls: Allow users to specify exactly which sections of the resume to focus on or ignore during tailoring.

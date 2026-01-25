@@ -96,7 +96,7 @@ export default function UploadResume() {
             return;
         }
 
-        if (activeTab === 'paste' && !pastedContent.trim()) {
+        if (activeTab === 'manual' && !manualContent.trim()) {
             toast({
                 title: 'Missing content',
                 description: 'Please paste your resume text',

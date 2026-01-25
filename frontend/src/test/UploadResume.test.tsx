@@ -71,7 +71,7 @@ describe('UploadResume', () => {
                 id: 1,
                 name: 'Test Resume',
                 content: 'Imported content',
-                is_master: true
+                is_selected: true
             });
 
             render(
@@ -110,7 +110,7 @@ describe('UploadResume', () => {
                 id: 2,
                 name: 'Pasted Resume',
                 content: 'Cleaned content',
-                is_master: true
+                is_selected: true
             });
 
             render(

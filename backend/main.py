@@ -59,7 +59,7 @@ class ResumeResponse(BaseModel):
     id: int
     name: str
     preview: str
-    is_master: bool
+    is_selected: bool
 
 
 class ResumeImportRequest(BaseModel):
@@ -70,6 +70,12 @@ class ResumeImportRequest(BaseModel):
 class ResumeManualRequest(BaseModel):
     content: str
     name: str | None = None
+
+
+class ResumeUpdateRequest(BaseModel):
+    name: str
+    content: str
+    is_selected: bool
 
 
 class JobResponse(BaseModel):
@@ -161,11 +167,11 @@ async def upload_resume(file: UploadFile = File(...), name: str = Form(None), db
             detail=("The extracted resume content is insufficient. Please ensure the PDF is not scanned or empty."),
         )
 
-    # Set this as the master resume (latest) and demote previous ones
-    db.query(models.Resume).update({models.Resume.is_master: False})
+    # Set this as the currently selected resume and deselect previous ones
+    db.query(models.Resume).update({models.Resume.is_selected: False})
 
     # Save to database
-    resume = models.Resume(name=name if name else file.filename.replace(".pdf", ""), content=content, is_master=True)
+    resume = models.Resume(name=name if name else file.filename.replace(".pdf", ""), content=content, is_selected=True)
     db.add(resume)
     db.commit()
     db.refresh(resume)
@@ -175,7 +181,7 @@ async def upload_resume(file: UploadFile = File(...), name: str = Form(None), db
         id=resume.id,
         name=resume.name,
         preview=content[:100] + "...",
-        is_master=resume.is_master,
+        is_selected=resume.is_selected,
     )
 
 
@@ -193,12 +199,12 @@ async def import_resume_from_url(request: ResumeImportRequest, db: Session = Dep
     if not content.strip() or len(content.strip()) < 50:
         raise HTTPException(status_code=400, detail="The scraped resume content is insufficient.")
 
-    # Set this as the master resume (latest) and demote previous ones
-    db.query(models.Resume).update({models.Resume.is_master: False})
+    # Set this as the currently selected resume and deselect previous ones
+    db.query(models.Resume).update({models.Resume.is_selected: False})
 
     # Save to database
     resume = models.Resume(
-        name=request.name if request.name else f"Imported from {request.url[:30]}...", content=content, is_master=True
+        name=request.name if request.name else f"Imported from {request.url[:30]}...", content=content, is_selected=True
     )
     db.add(resume)
     db.commit()
@@ -209,7 +215,7 @@ async def import_resume_from_url(request: ResumeImportRequest, db: Session = Dep
         id=resume.id,
         name=resume.name,
         preview=content[:100] + "...",
-        is_master=resume.is_master,
+        is_selected=resume.is_selected,
     )
 
 
@@ -227,20 +233,33 @@ async def add_resume_manual(request: ResumeManualRequest, db: Session = Depends(
         result = await clean_resume_agent.run(request.content)
         cleaned_content = extract_agent_data(result)
         log_ai_interaction("CLEAN RESUME RESPONSE", cleaned_content, "green")
+        
+        # Strip markdown code fences if present (AI sometimes wraps in ```markdown```)
+        cleaned_content = cleaned_content.strip()
+        if cleaned_content.startswith('```markdown') or cleaned_content.startswith('```'):
+            lines = cleaned_content.split('\n')
+            # Remove first line if it's a code fence
+            if lines[0].startswith('```'):
+                lines.pop(0)
+            # Remove last line if it's a closing fence
+            if lines and lines[-1].strip() == '```':
+                lines.pop()
+            cleaned_content = '\n'.join(lines)
+        
     except Exception as e:
         log_error(f"Resume cleaning failed: {str(e)}")
         log_debug(f"Full Error Traceback:\n{traceback.format_exc()}")
         # Fallback to raw content if cleaning fails
         cleaned_content = request.content
 
-    # Set this as the master resume (latest) and demote previous ones
-    db.query(models.Resume).update({models.Resume.is_master: False})
+    # Set this as the currently selected resume and deselect previous ones
+    db.query(models.Resume).update({models.Resume.is_selected: False})
 
     # Save to database
     resume = models.Resume(
         name=request.name if request.name else f"Pasted Resume {datetime.now().strftime('%Y-%m-%d %H:%M')}",
         content=cleaned_content,
-        is_master=True,
+        is_selected=True,
     )
     db.add(resume)
     db.commit()
@@ -251,21 +270,85 @@ async def add_resume_manual(request: ResumeManualRequest, db: Session = Depends(
         id=resume.id,
         name=resume.name,
         preview=cleaned_content[:100] + "...",
-        is_master=resume.is_master,
+        is_selected=resume.is_selected,
     )
 
 
 @app.get("/api/resumes", response_model=List[ResumeResponse])
 async def get_resumes(db: Session = Depends(get_db)):
     """Get all uploaded resumes."""
-    resumes = db.query(models.Resume).all()
+    resumes = db.query(models.Resume).order_by(models.Resume.updated_at.desc()).all()
 
     results = []
     for r in resumes:
-        preview = r.content[:200] + "..." if len(r.content) > 200 else r.content
-        results.append(ResumeResponse(id=r.id, name=r.name, preview=preview, is_master=r.is_master))
+        # Return full content for viewing/editing in the modal
+        results.append(ResumeResponse(id=r.id, name=r.name, preview=r.content, is_selected=r.is_selected))
 
     return results
+
+
+
+@app.put("/api/resumes/{resume_id}", response_model=ResumeResponse)
+async def update_resume(resume_id: int, request: ResumeUpdateRequest, db: Session = Depends(get_db)):
+    """Update an existing resume."""
+    log_debug(f"Updating resume ID: {resume_id}")
+    
+    resume = db.query(models.Resume).filter(models.Resume.id == resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    
+    # Update fields
+    resume.name = request.name
+    resume.content = request.content
+    resume.updated_at = datetime.now(UTC)  # Manually update timestamp
+    
+    # If setting this as selected, deselect all others
+    if request.is_selected and not resume.is_selected:
+        db.query(models.Resume).update({models.Resume.is_selected: False})
+    
+    resume.is_selected = request.is_selected
+    
+    db.commit()
+    db.refresh(resume)
+    
+    log_debug(f"Successfully updated resume ID: {resume.id}")
+    
+    return ResumeResponse(
+        id=resume.id,
+        name=resume.name,
+        preview=resume.content,  # Return full content
+        is_selected=resume.is_selected,
+    )
+
+
+@app.post("/api/resumes/{resume_id}/select", response_model=ResumeResponse)
+async def set_selected_resume(resume_id: int, db: Session = Depends(get_db)):
+    """Set a resume as the currently selected one."""
+    log_debug(f"Setting resume ID {resume_id} as selected")
+    
+    resume = db.query(models.Resume).filter(models.Resume.id == resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    
+    # Deselect all other resumes
+    db.query(models.Resume).update({models.Resume.is_selected: False})
+    
+    # Select this one
+    resume.is_selected = True
+    resume.updated_at = datetime.now(UTC)
+    
+    db.commit()
+    db.refresh(resume)
+    
+    log_debug(f"Resume ID {resume_id} is now the selected resume")
+    
+    return ResumeResponse(
+        id=resume.id,
+        name=resume.name,
+        preview=resume.content,
+        is_selected=resume.is_selected,
+    )
+
 
 
 @app.post("/api/analyze")

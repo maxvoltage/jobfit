@@ -26,7 +26,7 @@ This document describes the client-side validation logic to ensure data integrit
 
 ## 3. Application State
 *   **Case: Resume Selection**
-    *   **Logic:** Ensures a master resume is selected or available before allowing a job analysis to start.
+    *   **Logic:** Ensures a resume is selected or available before allowing a job analysis to start.
     *   **Error Message:** `"No resume found. Please upload a resume first."` (Redirect/Toast)
 
 ## 4. Job Detail Editing

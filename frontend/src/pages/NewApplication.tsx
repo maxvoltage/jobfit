@@ -9,13 +9,7 @@ import { Label } from '@/components/ui/label';
 import { analyzeJobUrl, analyzeJobDescription, getResumes } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { AnalyzeJobResponse, Resume } from '@/types';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ResumeSelector } from '@/components/ResumeSelector';
 
 export default function NewApplication() {
   const navigate = useNavigate();
@@ -27,20 +21,22 @@ export default function NewApplication() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string>('');
+  const [isResumeSelectorOpen, setIsResumeSelectorOpen] = useState(false);
+
+  const fetchResumes = async () => {
+    try {
+      const data = await getResumes();
+      setResumes(data);
+      if (data.length > 0 && !selectedResumeId) {
+        const selected = data.find(r => r.is_selected) || data[0];
+        setSelectedResumeId(selected.id.toString());
+      }
+    } catch (error) {
+      console.error('Failed to fetch resumes:', error);
+    }
+  };
 
   useEffect(() => {
-    const fetchResumes = async () => {
-      try {
-        const data = await getResumes();
-        setResumes(data);
-        if (data.length > 0) {
-          const master = data.find(r => r.is_master) || data[0];
-          setSelectedResumeId(master.id.toString());
-        }
-      } catch (error) {
-        console.error('Failed to fetch resumes:', error);
-      }
-    };
     fetchResumes();
   }, []);
 
@@ -149,18 +145,16 @@ export default function NewApplication() {
                   <div className="space-y-2">
                     <Label className="input-label">Select Resume <span className="text-destructive">*</span></Label>
                     {resumes.length > 0 ? (
-                      <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a resume" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {resumes.map((r) => (
-                            <SelectItem key={r.id} value={r.id.toString()}>
-                              {r.name} {r.is_master ? '(Master)' : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsResumeSelectorOpen(true)}
+                        className="w-full justify-start h-11 font-normal"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        {selectedResumeId
+                          ? resumes.find(r => r.id.toString() === selectedResumeId)?.name || 'Select a resume'
+                          : 'Select a resume'}
+                      </Button>
                     ) : (
                       <div className="p-3 border rounded-md bg-muted/30 text-sm">
                         No resumes found. <Link to="/upload" className="text-primary hover:underline">Upload one first</Link>
@@ -203,18 +197,16 @@ export default function NewApplication() {
                   <div className="space-y-2">
                     <Label className="input-label">Select Resume <span className="text-destructive">*</span></Label>
                     {resumes.length > 0 ? (
-                      <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a resume" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {resumes.map((r) => (
-                            <SelectItem key={r.id} value={r.id.toString()}>
-                              {r.name} {r.is_master ? '(Master)' : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsResumeSelectorOpen(true)}
+                        className="w-full justify-start h-11 font-normal"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        {selectedResumeId
+                          ? resumes.find(r => r.id.toString() === selectedResumeId)?.name || 'Select a resume'
+                          : 'Select a resume'}
+                      </Button>
                     ) : (
                       <div className="p-3 border rounded-md bg-muted/30 text-sm">
                         No resumes found. <Link to="/upload" className="text-primary hover:underline">Upload one first</Link>
@@ -252,6 +244,15 @@ export default function NewApplication() {
           </Tabs>
         </div>
       </div>
+
+      <ResumeSelector
+        open={isResumeSelectorOpen}
+        onOpenChange={setIsResumeSelectorOpen}
+        resumes={resumes}
+        selectedResumeId={selectedResumeId}
+        onSelectResume={setSelectedResumeId}
+        onResumeUpdate={fetchResumes}
+      />
     </div>
   );
 }

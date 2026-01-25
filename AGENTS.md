@@ -26,11 +26,11 @@ Build a local-first AI agent that helps users tailor their resumes to specific j
    - `id`: int (PK)
    - `name`: str (e.g., "Master Backend CV")
    - `content`: str (The raw markdown/text extracted from the uploaded PDF)
-   - `is_master`: bool (Default=False)
+   - `is_selected`: bool (Default=False)
 
 2. **Table `Job` (The Application)**
    - `id`: int (PK)
-   - `resume_id`: int (Foreign Key -> Resume.id). *Tracks which master resume was used.*
+   - `resume_id`: int (Foreign Key -> Resume.id). *Tracks which resume was used.*
    - `url`: str
    - `company`: str
    - `title`: str

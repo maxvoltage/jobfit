@@ -131,7 +131,7 @@ def sample_resume(db_session: Session):
     from models import Resume
 
     resume = Resume(
-        name="Test Resume", content="# John Doe\nSoftware Engineer with 5 years experience", is_master=False
+        name="Test Resume", content="# John Doe\nSoftware Engineer with 5 years experience", is_selected=False
     )
     db_session.add(resume)
     db_session.commit()

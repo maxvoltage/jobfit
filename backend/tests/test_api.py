@@ -47,7 +47,7 @@ class TestResumeUpload:
             data = response.json()
             assert data["name"] == "resume"
             assert "preview" in data
-            assert data["is_master"] is True
+            assert data["is_selected"] is True
             assert "id" in data
 
     def test_upload_non_pdf_file(self, client):
@@ -98,7 +98,7 @@ class TestResumeUpload:
             assert response.status_code == 200
             data = response.json()
             assert data["name"] == "LinkedIn Bio"
-            assert data["is_master"] is True
+            assert data["is_selected"] is True
             assert "sufficiently long" in data["preview"]
 
 
@@ -133,7 +133,7 @@ class TestResumeManual:
             data = response.json()
             assert data["name"] == "My Manual Resume"
             assert "# John Doe" in data["preview"]
-            assert data["is_master"] is True
+            assert data["is_selected"] is True
 
     def test_add_resume_manual_too_short(self, client):
         """Test adding a resume that is too short."""

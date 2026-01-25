@@ -133,7 +133,7 @@ backend/
 - `id`: Primary key
 - `name`: Resume name (from filename)
 - `content`: Extracted text content
-- `is_master`: Boolean flag for master resumes
+- `is_selected`: Boolean flag for the currently selected resume used for tailoring.
 
 ### Job Table
 - `id`: Primary key

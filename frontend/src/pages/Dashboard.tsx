@@ -3,7 +3,7 @@ import { Plus, Briefcase, TrendingUp, TrendingDown, CheckCircle, Clock, Loader2 
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ApplicationTable } from '@/components/ApplicationTable';
-import { getApplications, deleteApplication, getMasterResume } from '@/lib/api';
+import { getApplications, deleteApplication, getSelectedResume } from '@/lib/api';
 import { JobApplication, Resume } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ type FilterType = 'all' | 'high' | 'medium' | 'applied' | 'tbd';
 
 export default function Dashboard() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [masterResume, setMasterResume] = useState<Resume | null>(null);
+  const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -24,12 +24,12 @@ export default function Dashboard() {
 
   const { toast } = useToast();
 
-  const loadMasterResume = useCallback(async () => {
+  const loadSelectedResume = useCallback(async () => {
     try {
-      const resume = await getMasterResume();
-      if (resume) setMasterResume(resume);
+      const resume = await getSelectedResume();
+      if (resume) setSelectedResume(resume);
     } catch (error: unknown) {
-      console.error('Failed to load master resume:', error);
+      console.error('Failed to load selected resume:', error);
     }
   }, []);
 
@@ -50,7 +50,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadApplications();
-    loadMasterResume();
+    loadSelectedResume();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -163,7 +163,7 @@ export default function Dashboard() {
         <div>
           <h1 className="page-title">Dashboard</h1>
           <p className="page-description">
-            {masterResume ? `Target Resume: ${masterResume.name}` : 'Track and manage your job applications'}
+            {selectedResume ? `Currently Selected Resume: ${selectedResume.name}` : 'Track and manage your job applications'}
           </p>
         </div>
       </div>

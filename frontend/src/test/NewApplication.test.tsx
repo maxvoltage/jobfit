@@ -31,7 +31,7 @@ vi.mock('react-router-dom', async () => {
 describe('NewApplication Auto-save and Redirect', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'Resume 1', content: 'Mock content', is_master: true }]);
+        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'Resume 1', content: 'Mock content', is_selected: true }]);
     });
 
     it('should analyze manual entry and redirect immediately', async () => {
@@ -82,11 +82,11 @@ describe('NewApplication Auto-save and Redirect', () => {
         });
     });
 
-    it('should default to master resume even if it is not the first one', async () => {
+    it('should default to selected resume even if it is not the first one', async () => {
         const resumes = [
-            { id: 1, name: 'Old CV', content: 'Old content', is_master: false },
-            { id: 2, name: 'Latest Master CV', content: 'Master content', is_master: true },
-            { id: 3, name: 'Draft CV', content: 'Draft content', is_master: false }
+            { id: 1, name: 'Old CV', content: 'Old content', is_selected: false },
+            { id: 2, name: 'Latest Selected CV', content: 'Selected content', is_selected: true },
+            { id: 3, name: 'Draft CV', content: 'Draft content', is_selected: false }
         ];
         vi.mocked(api.getResumes).mockResolvedValue(resumes);
 
@@ -97,10 +97,11 @@ describe('NewApplication Auto-save and Redirect', () => {
         );
 
 
-        // Wait for resumes to load and check selected value in trigger
+        // Wait for resumes to load and check selected value in button
         await waitFor(() => {
-            const trigger = screen.getByRole('combobox');
-            expect(trigger.textContent).toContain('Latest Master CV');
+            const buttons = screen.getAllByRole('button');
+            const resumeButton = buttons.find(b => b.textContent?.includes('Latest Selected CV'));
+            expect(resumeButton).toBeDefined();
         });
     });
 

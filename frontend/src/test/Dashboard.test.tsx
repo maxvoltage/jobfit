@@ -9,7 +9,7 @@ import * as api from '../lib/api';
 vi.mock('../lib/api', () => ({
     getApplications: vi.fn(),
     deleteApplication: vi.fn(),
-    getMasterResume: vi.fn(),
+    getSelectedResume: vi.fn(),
 }));
 
 vi.mock('../hooks/use-toast', () => ({
@@ -44,7 +44,7 @@ describe('Dashboard Page', () => {
         vi.clearAllMocks();
         localStorage.clear();
         vi.mocked(api.getApplications).mockResolvedValue(mockApplications as unknown as JobApplication[]);
-        vi.mocked(api.getMasterResume).mockResolvedValue({ id: 1, name: 'Master Resume', is_master: true } as unknown as Resume);
+        vi.mocked(api.getSelectedResume).mockResolvedValue({ id: 1, name: 'First Resume', is_selected: true } as unknown as Resume);
     });
 
 
