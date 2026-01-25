@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Edit2, Save, X, Loader2, Eye } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -31,6 +31,14 @@ export function ResumeEditor({
     const [editedContent, setEditedContent] = useState(resume.content);
     const [isSaving, setIsSaving] = useState(false);
     const [editTab, setEditTab] = useState<'edit' | 'preview'>('edit');
+
+    // Sync state with prop when it changes or modal opens
+    useEffect(() => {
+        if (open) {
+            setEditedContent(resume.content);
+            setEditTab('edit');
+        }
+    }, [open, resume.content]);
 
     const handleSave = async () => {
         setIsSaving(true);

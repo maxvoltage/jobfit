@@ -43,12 +43,15 @@ export function ResumeSelector({
 
     const previewResume = resumes.find(r => r.id.toString() === previewResumeId);
 
-    // Update preview when modal opens or selected resume changes
+    // Reset preview to the selected resume only when the modal is FIRST opened
     useEffect(() => {
-        if (open && selectedResume) {
-            setPreviewResumeId(selectedResume.id.toString());
+        if (open) {
+            const currentSelected = resumes.find(r => r.is_selected) || resumes[0];
+            if (currentSelected) {
+                setPreviewResumeId(currentSelected.id.toString());
+            }
         }
-    }, [open, selectedResume]);
+    }, [open, resumes]); // Run when modal opens or resumes list changes
 
     const handleSelect = async () => {
         // Call the new endpoint to set this resume as selected

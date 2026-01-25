@@ -17,6 +17,7 @@ import models
 from agent import clean_resume_agent, resume_agent, resume_agent_no_tools
 from database import Base, engine, get_db
 from logger import log_ai_interaction, log_debug, log_error, log_requests_middleware
+from migrations import run_migrations
 from prompts import get_initial_tailoring_prompt, get_regeneration_prompt
 from tools import extract_text_from_pdf, scrape_job_description
 
@@ -26,6 +27,9 @@ logfire.configure(send_to_logfire=False)
 logfire.instrument_sqlalchemy(engine=engine)
 logfire.instrument_pydantic_ai()
 logfire.instrument_httpx()
+
+# Run SQLite migrations if needed before starting
+run_migrations()
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
