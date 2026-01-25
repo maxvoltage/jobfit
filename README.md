@@ -4,24 +4,140 @@ JobFit is a tool that helps you tailor your resume and cover letter for specific
 
 ## Architecture
 
-The project is split into two main parts:
+JobFit is a full-stack web application with a React frontend and FastAPI backend, designed for single-user local deployment.
 
-### Frontend (React)
-- Handles the user interface and file uploads.
-- Built with React, TypeScript, and Tailwind CSS.
-- Communicates with the backend via a REST API.
+### System Overview
 
-### Backend (FastAPI)
-- Handles PDF text extraction and web scraping.
-- Uses AI agents (PydanticAI) to analyze jobs and rewrite content.
-- Manages a SQLite database to store your resumes and application history.
-- Generates professional PDFs using WeasyPrint.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         User Browser                            │
+│                    (React + TypeScript)                         │
+└────────────────────────┬────────────────────────────────────────┘
+                         │ HTTP/REST API
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      FastAPI Backend                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
+│  │   REST API   │  │  AI Agents   │  │   PDF Generation     │   │
+│  │  Endpoints   │  │ (PydanticAI) │  │   (WeasyPrint)       │   │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘   │
+│         │                  │                     │              │
+│         └──────────────────┴─────────────────────┘              │
+│                            │                                    │
+│                            ▼                                    │
+│                   ┌─────────────────-┐                          │
+│                   │  SQLite Database │                          │
+│                   │  (Resumes, Jobs) │                          │
+│                   └─────────────────-┘                          │
+└─────────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+              ┌──────────────────────┐
+              │  External Services   │
+              │  - Jina AI (Scraper) │
+              │  - LLM API (Mistral) │
+              └──────────────────────┘
+```
 
-## Project Structure
+### Tech Stack
 
-- `/frontend`: The React application.
-- `/backend`: The FastAPI server and AI logic.
-- `jobfit.db`: The local database file.
+#### Frontend (`/frontend`)
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **Routing**: React Router v6
+- **State Management**: React hooks (useState, useEffect)
+- **Rich Text Editing**: Tiptap (for resume/cover letter editing)
+- **Build Tool**: Vite
+- **Testing**: Vitest + React Testing Library
+- **Linting**: ESLint
+
+#### Backend (`/backend`)
+- **Framework**: FastAPI (Python 3.13)
+- **Package Manager**: uv
+- **Database**: SQLAlchemy 2.0 with SQLite
+- **AI Framework**: PydanticAI with Mistral AI
+- **PDF Processing**: 
+  - MarkItDown (PDF text extraction)
+  - WeasyPrint (PDF generation)
+- **Web Scraping**: httpx + Jina AI Reader
+- **Testing**: pytest + pytest-asyncio
+- **Linting**: Ruff
+
+### Data Flow
+
+1. **Resume Upload**
+   ```
+   User link their resume/porfolio that is not behind any authentication → Backend scrapes with Jina AI
+   or uploads PDF → Backend extracts text 
+   or pastes resume text → Backend cleans text using LLM
+   → Stores in SQLite → Return to the dashboard
+   ```
+
+2. **Job Analysis**
+   ```
+   User submits job URL → Backend scrapes with Jina AI
+   or pastes job description
+   → AI agent analyzes + tailors resume → Saves to database → Returns results
+   ```
+
+   User clicks "Edit Text" → Tiptap editor loads HTML body → 
+   User makes changes → Frontend re-wraps with original styles → 
+   Backend saves updated content
+   or clicks "Regenerate" → Backend regenerates content with custom instructions → 
+   Returns updated content
+   ```
+
+4. **PDF Download**
+   
+   Returns PDF file separately, the resume and the cover letter
+   ```
+
+### Key Components
+
+#### AI Agents (PydanticAI)
+- **Resume Agent**: Analyzes job descriptions and tailors resumes
+- **Clean Resume Agent**: Formats pasted resume text into Markdown
+- **Tools**: 
+  - `scrape_job_description`: Fetches job postings via Jina AI
+  - `extract_text_from_pdf`: Converts PDF bytes to text
+
+#### Database Schema
+- **Resume Table**: Stores user resumes (PDF text, metadata)
+- **Job Table**: Stores job applications (company, title, tailored content, match score)
+
+#### API Endpoints
+- `POST /api/resumes/upload`: Upload PDF resume
+- `POST /api/resumes/import-url`: Import resume from URL
+- `POST /api/resumes/manual`: Save pasted resume text
+- `POST /api/analyze`: Analyze job and tailor resume
+- `PATCH /api/jobs/{id}`: Update job content (for editing)
+- `GET /api/jobs/{id}/pdf`: Download tailored resume/cover letter as PDF
+- `POST /api/jobs/{id}/regenerate`: Regenerate content with custom instructions
+
+### Project Structure
+
+```
+jobfit/
+├── frontend/              # React application
+│   ├── src/
+│   │   ├── components/    # Reusable UI components
+│   │   ├── pages/         # Page components
+│   │   ├── lib/           # API client, utilities
+│   │   └── test/          # Frontend tests
+│   └── package.json
+├── backend/               # FastAPI server
+│   ├── agent.py           # AI agent definitions
+│   ├── tools.py           # Agent tools (scraping, PDF extraction)
+│   ├── main.py            # API endpoints
+│   ├── models.py          # Database models
+│   ├── prompts.py         # AI system prompts
+│   └── tests/             # Backend tests
+├── Dockerfile             # Production container
+├── docker-compose.yml     # Local development setup
+├── render.yaml            # Render deployment setup
+└── jobfit.db              # SQLite database (local)
+```
+
 
 ## Running with Docker (Unified)
 

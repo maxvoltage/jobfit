@@ -1,12 +1,12 @@
 services:
   - type: web
-    name: jobfit-backend
-    env: docker
+    name: jobfit
+    runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
     envVars:
       - key: LLM_NAME
-        value: openai:gpt-4o
+        value: your-llm-name:type
       - key: OPENAI_API_KEY
         sync: false # Set this in Render dashboard as a secret
     healthCheckPath: /
