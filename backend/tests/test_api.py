@@ -497,3 +497,28 @@ class TestUpdateJob:
         """Test updating a non-existent job."""
         response = client.patch("/api/jobs/9999", json={"status": "applied"})
         assert response.status_code == 404
+
+
+class TestResumePDF:
+    """Test resume PDF generation endpoint."""
+
+    def test_generate_resume_pdf_success(self, client, sample_resume):
+        """Test successful PDF generation for a resume."""
+        with patch("main.HTML") as mock_html:
+            mock_pdf_instance = MagicMock()
+            mock_pdf_instance.write_pdf.return_value = b"PDF content"
+            mock_html.return_value = mock_pdf_instance
+
+            response = client.get(f"/api/resumes/{sample_resume.id}/pdf")
+
+            assert response.status_code == 200
+            assert response.headers["content-type"] == "application/pdf"
+            assert "attachment" in response.headers["content-disposition"]
+            # The filename in header is safe-formatted, so we check if a part of it exists
+            # sample_resume.name is "Test Resume" -> safe is "Test_Resume.pdf"
+            assert "Test" in response.headers["content-disposition"]
+
+    def test_generate_resume_pdf_not_found(self, client):
+        """Test PDF generation for non-existent resume."""
+        response = client.get("/api/resumes/9999/pdf")
+        assert response.status_code == 404

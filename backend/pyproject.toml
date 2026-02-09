@@ -19,6 +19,7 @@ dependencies = [
     "weasyprint>=68.0",
     "logfire[fastapi,httpx,sqlalchemy]>=4.19.0",
     "rich>=14.2.0",
+    "markdown>=3.10.2",
 ]
 
 [dependency-groups]

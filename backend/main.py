@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import List
 
 import logfire
+import markdown
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
@@ -351,6 +352,69 @@ async def set_selected_resume(resume_id: int, db: Session = Depends(get_db)):
         preview=resume.content,
         is_selected=resume.is_selected,
     )
+
+
+@app.get("/api/resumes/{resume_id}/pdf")
+async def generate_resume_pdf(resume_id: int, db: Session = Depends(get_db)):
+    """Generate a PDF from an uploaded resume (Markdown content)."""
+    resume = db.query(models.Resume).filter(models.Resume.id == resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    import re
+
+    # Ensure blank line before lists to help Markdown parser identify them
+    # This specifically looks for a non-list line followed by a line starting with a bullet (- or * followed by space)
+    content = resume.content
+    content = re.sub(r"(?m)^(?!\s*[-*+]\s)(.+)\r?\n\s*([-*+]\s+)", r"\1\n\n\2", content)
+
+    # Convert Markdown to HTML with extra features, newline-to-break, and sane list detection
+    html_content = markdown.markdown(content, extensions=["extra", "nl2br", "sane_lists", "smarty"])
+
+    # Wrap in basic HTML structure with consistent styling for better PDF look
+    styled_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            @page {{ size: A4; margin: 2cm; }}
+            body {{ font-family: 'Georgia', serif; font-size: 11pt; line-height: 1.5; color: #333; }}
+            h1, h2, h3, p, ul {{ margin: 0; }}
+            h1 {{ font-size: 24pt; margin-bottom: 0.2em; color: #1a1a1a; }}
+            h2 {{ font-size: 14pt; margin-top: 1.2em; margin-bottom: 0.4em; border-bottom: 1px solid #ccc;
+                padding-bottom: 0.1em; }}
+            h3 {{ font-size: 12pt; margin-top: 1em; margin-bottom: 0.05em; }}
+            p {{ margin-bottom: 0.6em; }}
+            ul {{ margin-top: 0.2em; margin-bottom: 0.8em; padding-left: 1.5em; list-style-type: disc; }}
+            li {{ margin-bottom: 0.3em; }}
+        </style>
+    </head>
+    <body>
+        {html_content}
+    </body>
+    </html>
+    """
+
+    try:
+        pdf_bytes = HTML(string=styled_html).write_pdf()
+
+        safe_filename = re.sub(r"[^\w\.\-]", "_", f"{resume.name}.pdf")
+        log_debug(f"Successfully generated PDF for resume: {safe_filename} ({len(pdf_bytes)} bytes)")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_filename}"',
+                "Content-Length": str(len(pdf_bytes)),
+                "Access-Control-Expose-Headers": "Content-Disposition",
+            },
+        )
+    except Exception as e:
+        log_error(f"Resume PDF generation failed: {str(e)}")
+        log_debug(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 
 @app.post("/api/analyze")

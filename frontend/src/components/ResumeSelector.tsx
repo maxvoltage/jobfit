@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Check, ExternalLink, Edit2 } from 'lucide-react';
+import { FileText, Check, ExternalLink, Edit2, Printer } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
     Dialog,
@@ -15,6 +15,7 @@ import { Resume } from '@/types';
 import { cn } from '@/lib/utils';
 import { ResumeEditor } from './ResumeEditor';
 import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 
 interface ResumeSelectorProps {
     open: boolean;
@@ -34,6 +35,7 @@ export function ResumeSelector({
     onResumeUpdate,
 }: ResumeSelectorProps) {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     // Find the currently selected resume or use the provided selectedResumeId
     const selectedResume = resumes.find(r => r.is_selected);
     const initialPreviewId = selectedResume ? selectedResume.id.toString() : selectedResumeId;
@@ -42,6 +44,42 @@ export function ResumeSelector({
     const [isEditorOpen, setIsEditorOpen] = useState(false);
 
     const previewResume = resumes.find(r => r.id.toString() === previewResumeId);
+
+    const handlePrint = async () => {
+        if (!previewResumeId) return;
+
+        try {
+            toast({
+                title: "Preparing PDF",
+                description: "Your resume is being generated...",
+            });
+
+            const response = await fetch(`/api/resumes/${previewResumeId}/pdf`);
+            if (!response.ok) throw new Error('Failed to generate PDF');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${previewResume?.name || 'resume'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            toast({
+                title: "PDF Ready",
+                description: "Your resume has been downloaded.",
+            });
+        } catch (error) {
+            console.error('Failed to print PDF:', error);
+            toast({
+                variant: "destructive",
+                title: "Print Failed",
+                description: "Could not generate PDF. Please try again.",
+            });
+        }
+    };
 
     // Reset preview to the selected resume only when the modal is FIRST opened
     useEffect(() => {
@@ -71,9 +109,19 @@ export function ResumeSelector({
                 onResumeUpdate();
             }
 
+            toast({
+                title: "Resume Selected",
+                description: "This resume will be used for your application.",
+            });
+
             onOpenChange(false);
         } catch (error) {
             console.error('Failed to set selected resume:', error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to select resume. Please try again.",
+            });
         }
     };
 
@@ -173,15 +221,26 @@ export function ResumeSelector({
                                                 <p className="text-sm text-muted-foreground">Currently Selected</p>
                                             )}
                                         </div>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setIsEditorOpen(true)}
-                                            className="gap-2"
-                                        >
-                                            <Edit2 className="h-3 w-3" />
-                                            Edit
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handlePrint}
+                                                className="gap-2"
+                                            >
+                                                <Printer className="h-3 w-3" />
+                                                Print PDF
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsEditorOpen(true)}
+                                                className="gap-2"
+                                            >
+                                                <Edit2 className="h-3 w-3" />
+                                                Edit
+                                            </Button>
+                                        </div>
                                     </div>
 
                                     <div className="prose prose-sm max-w-none dark:prose-invert">
