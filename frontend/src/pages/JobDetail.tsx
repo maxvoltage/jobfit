@@ -135,38 +135,22 @@ export default function JobDetail() {
     }
   };
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = () => {
     if (!id) return;
-    try {
-      await downloadJobPdf(id, activeTab as 'resume' | 'cover');
-      toast({
-        title: 'Downloaded',
-        description: `${activeTab === 'resume' ? 'Resume' : 'Cover Letter'} download started`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to download PDF. Please try again.',
-        variant: 'destructive',
-      });
-    }
+    toast({
+      title: 'Download Started',
+      description: `${activeTab === 'resume' ? 'Resume' : 'Cover Letter'} PDF is being generated.`,
+    });
+    downloadJobPdf(id, activeTab as 'resume' | 'cover');
   };
 
-  const handleDownloadDocx = async () => {
+  const handleDownloadDocx = () => {
     if (!id) return;
-    try {
-      await downloadJobDocx(id, activeTab as 'resume' | 'cover');
-      toast({
-        title: 'Downloaded',
-        description: `${activeTab === 'resume' ? 'Resume' : 'Cover Letter'} Word document download started`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to download Word document. Please try again.',
-        variant: 'destructive',
-      });
-    }
+    toast({
+      title: 'Download Started',
+      description: `${activeTab === 'resume' ? 'Resume' : 'Cover Letter'} Word document is being generated.`,
+    });
+    downloadJobDocx(id, activeTab as 'resume' | 'cover');
   };
 
   const handleStartEdit = () => {
@@ -312,7 +296,7 @@ export default function JobDetail() {
                     <Edit2 className="mr-2 h-4 w-4" />
                     Edit Text
                   </Button>
-                  <Button onClick={handleDownloadPdf}>
+                  <Button variant="outline" onClick={handleDownloadPdf}>
                     <Download className="mr-2 h-4 w-4" />
                     PDF
                   </Button>

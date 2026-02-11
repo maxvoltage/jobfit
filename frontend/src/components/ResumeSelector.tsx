@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { ResumeEditor } from './ResumeEditor';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { downloadResumePdf, downloadResumeDocx } from '@/lib/api';
 
 interface ResumeSelectorProps {
     open: boolean;
@@ -45,76 +46,26 @@ export function ResumeSelector({
 
     const previewResume = resumes.find(r => r.id.toString() === previewResumeId);
 
-    const handlePrint = async () => {
+    const handlePrint = () => {
         if (!previewResumeId) return;
 
-        try {
-            toast({
-                title: "Preparing PDF",
-                description: "Your resume is being generated...",
-            });
+        toast({
+            title: "Download Started",
+            description: "Your PDF is being generated and will download shortly.",
+        });
 
-            const response = await fetch(`/api/resumes/${previewResumeId}/pdf`);
-            if (!response.ok) throw new Error('Failed to generate PDF');
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${previewResume?.name || 'resume'}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            toast({
-                title: "PDF Ready",
-                description: "Your resume has been downloaded.",
-            });
-        } catch (error) {
-            console.error('Failed to print PDF:', error);
-            toast({
-                variant: "destructive",
-                title: "Print Failed",
-                description: "Could not generate PDF. Please try again.",
-            });
-        }
+        downloadResumePdf(previewResumeId);
     };
 
-    const handleDownloadWord = async () => {
+    const handleDownloadWord = () => {
         if (!previewResumeId) return;
 
-        try {
-            toast({
-                title: "Preparing Word Document",
-                description: "Your resume is being generated...",
-            });
+        toast({
+            title: "Download Started",
+            description: "Your Word document is being generated and will download shortly.",
+        });
 
-            const response = await fetch(`/api/resumes/${previewResumeId}/docx`);
-            if (!response.ok) throw new Error('Failed to generate Word document');
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${previewResume?.name || 'resume'}.docx`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            toast({
-                title: "Word Document Ready",
-                description: "Your resume has been downloaded.",
-            });
-        } catch (error) {
-            console.error('Failed to download Word:', error);
-            toast({
-                variant: "destructive",
-                title: "Download Failed",
-                description: "Could not generate Word document. Please try again.",
-            });
-        }
+        downloadResumeDocx(previewResumeId);
     };
 
     // Reset preview to the selected resume only when the modal is FIRST opened

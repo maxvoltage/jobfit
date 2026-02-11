@@ -1,6 +1,6 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
 import { ResumeSelector } from '../components/ResumeSelector';
 import { Resume } from '../types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -29,6 +29,13 @@ vi.mock('@/hooks/use-toast', () => ({
     }),
 }));
 
+vi.mock('@/lib/api', () => ({
+    downloadResumePdf: vi.fn(),
+    downloadResumeDocx: vi.fn(),
+}));
+
+import * as api from '@/lib/api';
+
 describe('ResumeSelector Component', () => {
     const mockResumes: Resume[] = [
         { id: 1, name: 'First Resume', content: 'Content 1', is_selected: false },
@@ -39,7 +46,7 @@ describe('ResumeSelector Component', () => {
     it('should initially preview the selected resume when opened', async () => {
         render(
             <QueryClientProvider client={queryClient}>
-                <MemoryRouter>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                     <ResumeSelector
                         open={true}
                         onOpenChange={vi.fn()}
@@ -58,9 +65,9 @@ describe('ResumeSelector Component', () => {
     });
 
     it('should allow switching between resumes for preview', async () => {
-        const { rerender } = render(
+        render(
             <QueryClientProvider client={queryClient}>
-                <MemoryRouter>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                     <ResumeSelector
                         open={true}
                         onOpenChange={vi.fn()}
@@ -77,7 +84,7 @@ describe('ResumeSelector Component', () => {
 
         // Simulate clicking "First Resume"
         const firstResumeBtn = screen.getByText('First Resume');
-        firstResumeBtn.click();
+        fireEvent.click(firstResumeBtn);
 
         // Should now preview "First Resume"
         await waitFor(() => {
@@ -86,19 +93,11 @@ describe('ResumeSelector Component', () => {
     });
 
     it('should show PDF and Word download buttons in preview', async () => {
-        // Mock fetch and window.URL for downloads
-        const mockFetch = vi.fn().mockResolvedValue({
-            ok: true,
-            blob: () => Promise.resolve(new Blob(['test content'], { type: 'application/pdf' })),
-        });
-        vi.stubGlobal('fetch', mockFetch);
-
-        window.URL.createObjectURL = vi.fn().mockReturnValue('blob:test');
-        window.URL.revokeObjectURL = vi.fn();
+        const user = userEvent.setup();
 
         render(
             <QueryClientProvider client={queryClient}>
-                <MemoryRouter>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                     <ResumeSelector
                         open={true}
                         onOpenChange={vi.fn()}
@@ -119,13 +118,11 @@ describe('ResumeSelector Component', () => {
         expect(wordButton).toBeInTheDocument();
 
         // Test PDF click
-        pdfButton.click();
-        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/pdf'));
+        await user.click(pdfButton);
+        expect(api.downloadResumePdf).toHaveBeenCalledWith("2");
 
         // Test Word click
-        wordButton.click();
-        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/docx'));
-
-        vi.unstubAllGlobals();
+        await user.click(wordButton);
+        expect(api.downloadResumeDocx).toHaveBeenCalledWith("2");
     });
 });

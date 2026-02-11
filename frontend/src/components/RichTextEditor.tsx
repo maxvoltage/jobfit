@@ -219,13 +219,6 @@ export function RichTextEditor({ content, onChange, className }: RichTextEditorP
                     levels: [1, 2, 3],
                 },
             }),
-            Underline,
-            Link.configure({
-                openOnClick: false,
-                HTMLAttributes: {
-                    class: 'text-primary underline cursor-pointer',
-                },
-            }),
             TextAlign.configure({
                 types: ['heading', 'paragraph'],
             }),
