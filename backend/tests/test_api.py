@@ -522,3 +522,89 @@ class TestResumePDF:
         """Test PDF generation for non-existent resume."""
         response = client.get("/api/resumes/9999/pdf")
         assert response.status_code == 404
+
+
+class TestDOCXGeneration:
+    """Test DOCX generation endpoints for both resumes and jobs."""
+
+    def test_generate_resume_docx_success(self, client, sample_resume):
+        """Test successful DOCX generation for a resume."""
+        # Mock Document and its save method to avoid external dependencies
+        with patch("main.Document") as mock_doc:
+            mock_instance = MagicMock()
+            mock_doc.return_value = mock_instance
+
+            response = client.get(f"/api/resumes/{sample_resume.id}/docx")
+
+            assert response.status_code == 200
+            assert (
+                response.headers["content-type"]
+                == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+            assert "attachment" in response.headers["content-disposition"]
+            assert "Test_Resume.docx" in response.headers["content-disposition"]
+
+    def test_generate_resume_docx_not_found(self, client):
+        """Test DOCX generation for non-existent resume."""
+        response = client.get("/api/resumes/9999/docx")
+        assert response.status_code == 404
+
+    def test_generate_job_docx_success(self, client, sample_job):
+        """Test successful DOCX generation for a tailored job resume."""
+        with patch("main.Document") as mock_doc:
+            mock_instance = MagicMock()
+            mock_doc.return_value = mock_instance
+
+            response = client.get(f"/api/jobs/{sample_job.id}/docx")
+
+            assert response.status_code == 200
+            assert (
+                response.headers["content-type"]
+                == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+            assert "attachment" in response.headers["content-disposition"]
+            # raw_filename = f"{job.company}_{job.title}_{type}.docx"
+            # Test_Company_Software_Engineer_resume.docx
+            assert "Test_Company" in response.headers["content-disposition"]
+            assert "resume.docx" in response.headers["content-disposition"]
+
+    def test_generate_job_docx_cover_letter_success(self, client, sample_job):
+        """Test successful DOCX generation for a job cover letter."""
+        with patch("main.Document") as mock_doc:
+            mock_instance = MagicMock()
+            mock_doc.return_value = mock_instance
+
+            response = client.get(f"/api/jobs/{sample_job.id}/docx", params={"type": "cover"})
+
+            assert response.status_code == 200
+            assert (
+                response.headers["content-type"]
+                == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+            assert "cover.docx" in response.headers["content-disposition"]
+
+    def test_generate_job_docx_not_found(self, client):
+        """Test DOCX generation for non-existent job."""
+        response = client.get("/api/jobs/9999/docx")
+        assert response.status_code == 404
+
+    def test_generate_job_docx_no_content(self, client, db_session, sample_resume):
+        """Test DOCX generation when no content exists."""
+        job = Job(
+            resume_id=sample_resume.id,
+            url="https://example.com/job",
+            company="Empty Co",
+            title="Ghost",
+            original_jd="JD",
+            tailored_resume="",  # Empty
+            cover_letter=None,
+            match_score=0,
+            status=JobStatus.todo,
+        )
+        db_session.add(job)
+        db_session.commit()
+        db_session.refresh(job)
+
+        response = client.get(f"/api/jobs/{job.id}/docx")
+        assert response.status_code == 400
+        assert "content available" in response.json()["detail"]

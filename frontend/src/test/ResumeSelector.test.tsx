@@ -84,4 +84,48 @@ describe('ResumeSelector Component', () => {
             expect(screen.getByText('Content 1')).toBeInTheDocument();
         });
     });
+
+    it('should show PDF and Word download buttons in preview', async () => {
+        // Mock fetch and window.URL for downloads
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            blob: () => Promise.resolve(new Blob(['test content'], { type: 'application/pdf' })),
+        });
+        vi.stubGlobal('fetch', mockFetch);
+
+        window.URL.createObjectURL = vi.fn().mockReturnValue('blob:test');
+        window.URL.revokeObjectURL = vi.fn();
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter>
+                    <ResumeSelector
+                        open={true}
+                        onOpenChange={vi.fn()}
+                        resumes={mockResumes}
+                        selectedResumeId="2"
+                        onSelectResume={vi.fn()}
+                    />
+                </MemoryRouter>
+            </QueryClientProvider>
+        );
+
+        // PDF button
+        const pdfButton = screen.getByRole('button', { name: /^pdf$/i });
+        expect(pdfButton).toBeInTheDocument();
+
+        // Word button
+        const wordButton = screen.getByRole('button', { name: /^word$/i });
+        expect(wordButton).toBeInTheDocument();
+
+        // Test PDF click
+        pdfButton.click();
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/pdf'));
+
+        // Test Word click
+        wordButton.click();
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/docx'));
+
+        vi.unstubAllGlobals();
+    });
 });

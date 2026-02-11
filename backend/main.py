@@ -1,10 +1,14 @@
 import os
 import traceback
 from datetime import UTC, datetime
+from io import BytesIO
 from typing import List
 
+import docx
 import logfire
 import markdown
+from docx import Document
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
@@ -417,6 +421,131 @@ async def generate_resume_pdf(resume_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 
+def add_hyperlink(paragraph, url, text):
+    """Adds a hyperlink to a paragraph."""
+    part = paragraph.part
+    r_id = part.relate_to(url, RT.HYPERLINK, is_external=True)
+
+    hyperlink = docx.oxml.shared.OxmlElement("w:hyperlink")
+    hyperlink.set(docx.oxml.shared.qn("r:id"), r_id)
+
+    new_run = docx.oxml.shared.OxmlElement("w:r")
+    rPr = docx.oxml.shared.OxmlElement("w:rPr")
+
+    # Style it blue and underlined like a standard link
+    c = docx.oxml.shared.OxmlElement("w:color")
+    c.set(docx.oxml.shared.qn("w:val"), "0000FF")
+    rPr.append(c)
+
+    u = docx.oxml.shared.OxmlElement("w:u")
+    u.set(docx.oxml.shared.qn("w:val"), "single")
+    rPr.append(u)
+
+    new_run.append(rPr)
+    t = docx.oxml.shared.OxmlElement("w:t")
+    t.text = text
+    new_run.append(t)
+    hyperlink.append(new_run)
+
+    paragraph._p.append(hyperlink)
+    return hyperlink
+
+
+def add_content_to_paragraph(element, paragraph, bold=False, italic=False):
+    """Recursively add HTML content to a docx paragraph, preserving bold, italic, and links."""
+    for child in element.children:
+        if isinstance(child, str):
+            if child.strip() or child == " ":
+                run = paragraph.add_run(child)
+                run.bold = bold
+                run.italic = italic
+        elif child.name == "br":
+            paragraph.add_run("\n")
+        elif child.name in ["b", "strong"]:
+            add_content_to_paragraph(child, paragraph, bold=True, italic=italic)
+        elif child.name in ["i", "em"]:
+            add_content_to_paragraph(child, paragraph, bold=bold, italic=True)
+        elif child.name == "a":
+            url = child.get("href", "")
+            text = child.get_text()
+            if url:
+                try:
+                    add_hyperlink(paragraph, url, text)
+                except Exception:
+                    run = paragraph.add_run(f"{text} ({url})")
+                    run.bold = bold
+                    run.italic = italic
+            else:
+                add_content_to_paragraph(child, paragraph, bold=bold, italic=italic)
+        else:
+            # For other tags, recurse with current styles
+            add_content_to_paragraph(child, paragraph, bold=bold, italic=italic)
+
+
+@app.get("/api/resumes/{resume_id}/docx")
+async def generate_resume_docx(resume_id: int, db: Session = Depends(get_db)):
+    """Generate a DOCX file from an uploaded resume (Markdown content)."""
+    resume = db.query(models.Resume).filter(models.Resume.id == resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    try:
+        import re
+
+        from bs4 import BeautifulSoup
+
+        # Normalize markdown for better parsing (same as PDF)
+        content = resume.content
+        content = re.sub(r"(?m)^(?!\s*[-*+]\s)(.+)\r?\n\s*([-*+]\s+)", r"\1\n\n\2", content)
+        html_content = markdown.markdown(content, extensions=["extra", "nl2br", "sane_lists", "smarty"])
+
+        doc = Document()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        for element in soup.find_all(["h1", "h2", "h3", "p", "ul", "ol", "li"]):
+            # Avoid processing li twice (once in ul, once independently)
+            if element.name == "li" and element.parent and element.parent.name in ["ul", "ol"]:
+                continue
+
+            if element.name == "h1":
+                doc.add_heading(element.get_text(), level=0)
+            elif element.name == "h2":
+                doc.add_heading(element.get_text(), level=1)
+            elif element.name == "h3":
+                doc.add_heading(element.get_text(), level=2)
+            elif element.name == "p":
+                if element.get_text().strip():
+                    p = doc.add_paragraph()
+                    add_content_to_paragraph(element, p)
+            elif element.name in ["ul", "ol"]:
+                style = "List Bullet" if element.name == "ul" else "List Number"
+                for li in element.find_all("li", recursive=False):
+                    p = doc.add_paragraph(style=style)
+                    add_content_to_paragraph(li, p)
+
+        # Save to bytes
+        target_stream = BytesIO()
+        doc.save(target_stream)
+        docx_bytes = target_stream.getvalue()
+
+        safe_filename = re.sub(r"[^\w\.\-]", "_", f"{resume.name}.docx")
+        log_debug(f"Successfully generated DOCX for resume: {safe_filename} ({len(docx_bytes)} bytes)")
+
+        return Response(
+            content=docx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_filename}"',
+                "Content-Length": str(len(docx_bytes)),
+                "Access-Control-Expose-Headers": "Content-Disposition",
+            },
+        )
+    except Exception as e:
+        log_error(f"Resume DOCX generation failed: {str(e)}")
+        log_debug(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Word document generation failed: {str(e)}")
+
+
 @app.post("/api/analyze")
 async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db)):
     """Analyze a job posting and tailor the resume."""
@@ -617,6 +746,77 @@ async def generate_pdf(
         log_error(f"PDF generation failed for Job ID {job_id}: {str(e)}")
         log_debug(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
+
+@app.get("/api/jobs/{job_id}/docx")
+async def generate_job_docx(
+    job_id: int,
+    type: str = "resume",  # "resume" or "cover"
+    db: Session = Depends(get_db),
+):
+    """Generate a DOCX file from the tailored resume or cover letter (HTML content)."""
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Get the HTML content
+    html_content = job.cover_letter if type == "cover" else job.tailored_resume
+    if not html_content:
+        raise HTTPException(status_code=400, detail=f"No {type} content available for Word generation")
+
+    try:
+        from bs4 import BeautifulSoup
+
+        doc = Document()
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # Simple HTML to Docx conversion
+        # This handles common tags found in the tailored output
+        for element in soup.find_all(["h1", "h2", "h3", "p", "ul", "ol", "li"]):
+            # Avoid processing li twice (once in ul, once independently)
+            if element.name == "li" and element.parent and element.parent.name in ["ul", "ol"]:
+                continue
+
+            if element.name == "h1":
+                doc.add_heading(element.get_text(), level=0)
+            elif element.name == "h2":
+                doc.add_heading(element.get_text(), level=1)
+            elif element.name == "h3":
+                doc.add_heading(element.get_text(), level=2)
+            elif element.name == "p":
+                if element.get_text().strip():
+                    p = doc.add_paragraph()
+                    add_content_to_paragraph(element, p)
+            elif element.name in ["ul", "ol"]:
+                style = "List Bullet" if element.name == "ul" else "List Number"
+                for li in element.find_all("li", recursive=False):
+                    p = doc.add_paragraph(style=style)
+                    add_content_to_paragraph(li, p)
+
+        # Save to bytes
+        target_stream = BytesIO()
+        doc.save(target_stream)
+        docx_bytes = target_stream.getvalue()
+
+        import re
+
+        raw_filename = f"{job.company}_{job.title}_{type}.docx"
+        safe_filename = re.sub(r"[^\w\.\-]", "_", raw_filename)
+        log_debug(f"Successfully generated DOCX: {safe_filename} ({len(docx_bytes)} bytes)")
+
+        return Response(
+            content=docx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_filename}"',
+                "Content-Length": str(len(docx_bytes)),
+                "Access-Control-Expose-Headers": "Content-Disposition",
+            },
+        )
+    except Exception as e:
+        log_error(f"DOCX generation failed for Job ID {job_id}: {str(e)}")
+        log_debug(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Word document generation failed: {str(e)}")
 
 
 @app.delete("/api/jobs/{job_id}")

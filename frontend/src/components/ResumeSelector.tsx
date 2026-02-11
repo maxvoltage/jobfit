@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Check, ExternalLink, Edit2, Printer } from 'lucide-react';
+import { FileText, Check, ExternalLink, Edit2, Printer, FileDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
     Dialog,
@@ -77,6 +77,42 @@ export function ResumeSelector({
                 variant: "destructive",
                 title: "Print Failed",
                 description: "Could not generate PDF. Please try again.",
+            });
+        }
+    };
+
+    const handleDownloadWord = async () => {
+        if (!previewResumeId) return;
+
+        try {
+            toast({
+                title: "Preparing Word Document",
+                description: "Your resume is being generated...",
+            });
+
+            const response = await fetch(`/api/resumes/${previewResumeId}/docx`);
+            if (!response.ok) throw new Error('Failed to generate Word document');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${previewResume?.name || 'resume'}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            toast({
+                title: "Word Document Ready",
+                description: "Your resume has been downloaded.",
+            });
+        } catch (error) {
+            console.error('Failed to download Word:', error);
+            toast({
+                variant: "destructive",
+                title: "Download Failed",
+                description: "Could not generate Word document. Please try again.",
             });
         }
     };
@@ -229,7 +265,16 @@ export function ResumeSelector({
                                                 className="gap-2"
                                             >
                                                 <Printer className="h-3 w-3" />
-                                                Print PDF
+                                                PDF
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleDownloadWord}
+                                                className="gap-2"
+                                            >
+                                                <FileDown className="h-3 w-3" />
+                                                Word
                                             </Button>
                                             <Button
                                                 variant="outline"

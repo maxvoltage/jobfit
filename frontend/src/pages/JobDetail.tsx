@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, RefreshCw, Building2, Loader2, Edit2, Save, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Building2, Loader2, Edit2, Save, X, Trash2, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { MatchScoreBadge } from '@/components/MatchScoreBadge';
-import { getApplication, regenerateContent, updateApplication, downloadJobPdf, deleteApplication } from '@/lib/api';
+import { getApplication, regenerateContent, updateApplication, downloadJobPdf, downloadJobDocx, deleteApplication } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import {
@@ -147,6 +147,23 @@ export default function JobDetail() {
       toast({
         title: 'Error',
         description: 'Failed to download PDF. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDownloadDocx = async () => {
+    if (!id) return;
+    try {
+      await downloadJobDocx(id, activeTab as 'resume' | 'cover');
+      toast({
+        title: 'Downloaded',
+        description: `${activeTab === 'resume' ? 'Resume' : 'Cover Letter'} Word document download started`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to download Word document. Please try again.',
         variant: 'destructive',
       });
     }
@@ -297,7 +314,11 @@ export default function JobDetail() {
                   </Button>
                   <Button onClick={handleDownloadPdf}>
                     <Download className="mr-2 h-4 w-4" />
-                    Download PDF
+                    PDF
+                  </Button>
+                  <Button variant="outline" onClick={handleDownloadDocx}>
+                    <FileDown className="mr-2 h-4 w-4" />
+                    Word
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>

@@ -280,3 +280,35 @@ export async function downloadJobPdf(jobId: string, type: 'resume' | 'cover' = '
   }, 100);
 }
 
+export async function downloadJobDocx(jobId: string, type: 'resume' | 'cover' = 'resume') {
+  const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/docx?type=${type}`, {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to generate Word document' }));
+    throw new Error(error.detail || 'Failed to generate Word document');
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+
+  const contentDisposition = response.headers.get('Content-Disposition');
+  let fileName = `application_${jobId}_${type}.docx`;
+  if (contentDisposition && contentDisposition.includes('filename=')) {
+    const match = contentDisposition.match(/filename="?([^"]+)"?/);
+    if (match && match[1]) fileName = match[1];
+  }
+
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+
+  setTimeout(() => {
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }, 100);
+}
+

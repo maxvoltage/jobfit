@@ -20,6 +20,7 @@ vi.mock('../lib/api', () => ({
     updateApplication: vi.fn(),
     regenerateContent: vi.fn(),
     downloadJobPdf: vi.fn(),
+    downloadJobDocx: vi.fn(),
 }));
 
 vi.mock('../hooks/use-toast', () => ({
@@ -228,7 +229,7 @@ describe('JobDetail Page', () => {
         await waitFor(() => screen.getByText('Test Company'));
 
         // Download resume (default tab)
-        const downloadButton = screen.getByRole('button', { name: /download pdf/i });
+        const downloadButton = screen.getByRole('button', { name: /^pdf$/i });
         await user.click(downloadButton);
         expect(api.downloadJobPdf).toHaveBeenCalledWith('1', 'resume');
 
@@ -237,6 +238,32 @@ describe('JobDetail Page', () => {
         await user.click(coverTab);
         await user.click(downloadButton);
         expect(api.downloadJobPdf).toHaveBeenCalledWith('1', 'cover');
+    });
+
+    it('should call downloadJobDocx with correct type when Word button is clicked', async () => {
+        const user = userEvent.setup();
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Routes>
+                        <Route path="/job/:id" element={<JobDetail />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
+        );
+
+        await waitFor(() => screen.getByText('Test Company'));
+
+        // Download resume Word (default tab)
+        const wordButton = screen.getByRole('button', { name: /^word$/i });
+        await user.click(wordButton);
+        expect(api.downloadJobDocx).toHaveBeenCalledWith('1', 'resume');
+
+        // Switch to cover letter and download Word
+        const coverTab = screen.getByRole('tab', { name: /cover letter/i });
+        await user.click(coverTab);
+        await user.click(wordButton);
+        expect(api.downloadJobDocx).toHaveBeenCalledWith('1', 'cover');
     });
 
     it('should allow editing and saving resume content', async () => {
