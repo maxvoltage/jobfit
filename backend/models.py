@@ -28,7 +28,7 @@ class Resume(Base):
     )
 
     # Relationship to Jobs
-    jobs: Mapped[List["Job"]] = relationship(back_populates="resume", cascade="all, delete-orphan")
+    jobs: Mapped[List["Job"]] = relationship(back_populates="source_resume", cascade="all, delete-orphan")
 
 
 class Job(Base):
@@ -40,11 +40,11 @@ class Job(Base):
     company: Mapped[str]
     title: Mapped[str]
     original_jd: Mapped[str]
-    tailored_resume: Mapped[str]
+    resume: Mapped[str]
     cover_letter: Mapped[Optional[str]]
     match_score: Mapped[int]
     status: Mapped[JobStatus] = mapped_column(SQLEnum(JobStatus), default=JobStatus.todo)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     # Relationship to Resume
-    resume: Mapped["Resume"] = relationship(back_populates="jobs")
+    source_resume: Mapped["Resume"] = relationship(back_populates="jobs")

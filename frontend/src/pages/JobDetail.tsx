@@ -155,7 +155,7 @@ export default function JobDetail() {
 
   const handleStartEdit = () => {
     if (!application) return;
-    setEditedResume(extractBody(application.tailoredResume || ''));
+    setEditedResume(extractBody(application.resume || ''));
     setEditedCover(extractBody(application.coverLetter || ''));
     setIsEditing(true);
   };
@@ -163,11 +163,11 @@ export default function JobDetail() {
   const handleSaveEdit = async () => {
     if (!application) return;
     try {
-      const fullResume = rewrapBody(application.tailoredResume || '', editedResume);
+      const fullResume = rewrapBody(application.resume || '', editedResume);
       const fullCover = rewrapBody(application.coverLetter || '', editedCover);
 
       await updateMutation.mutateAsync({
-        tailoredResume: fullResume,
+        resume: fullResume,
         coverLetter: fullCover
       });
 
@@ -367,7 +367,7 @@ export default function JobDetail() {
         <div className="card-elevated p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
-              <TabsTrigger value="resume">Tailored Resume</TabsTrigger>
+              <TabsTrigger value="resume">Resume</TabsTrigger>
               <TabsTrigger value="cover">Cover Letter</TabsTrigger>
             </TabsList>
 
@@ -378,12 +378,12 @@ export default function JobDetail() {
                     content={editedResume}
                     onChange={setEditedResume}
                   />
-                ) : application.tailoredResume ? (
+                ) : application.resume ? (
                   <div className="markdown-preview">
-                    <MarkdownPreview content={application.tailoredResume} />
+                    <MarkdownPreview content={application.resume} />
                   </div>
                 ) : (
-                  <EmptyState message="No tailored resume generated yet" />
+                  <EmptyState message="No resume generated yet" />
                 )}
               </div>
             </TabsContent>

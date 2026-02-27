@@ -18,7 +18,11 @@ LLM_NAME = os.getenv("LLM_NAME", "openai:gpt-4o")
 
 # Database Configuration
 BASE_DIR = Path(__file__).parent.parent
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/jobfit.db")
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///data/jobfit.db")
+
+# Automatically resolve relative SQLite paths against BASE_DIR
+if DATABASE_URL.startswith("sqlite:///") and not DATABASE_URL.startswith("sqlite:////"):
+    DATABASE_URL = f"sqlite:///{BASE_DIR}/{DATABASE_URL[9:]}"
 
 # Application Settings
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"

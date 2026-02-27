@@ -6,7 +6,7 @@ export interface JobApplication {
   matchScore: number;
   jobUrl?: string;
   jobDescription: string;
-  tailoredResume?: string;
+  resume?: string;
   coverLetter?: string;
   status: 'pending' | 'analyzed' | 'applied' | 'interview' | 'rejected';
   applied: boolean;
@@ -18,7 +18,7 @@ export interface AnalyzeJobResponse {
   jobTitle: string;
   jobDescription: string;
   matchScore: number;
-  tailoredResume: string;
+  resume: string;
   coverLetter: string;
 }
 export interface Resume {

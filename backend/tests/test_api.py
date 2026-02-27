@@ -153,7 +153,7 @@ class TestAnalyzeJob:
         mock_result = MagicMock()
         mock_result.output = ResumeMatchResult(
             match_score=85,
-            tailored_resume_html="<h1>Tailored Resume</h1><p>This is a long enough tailored resume content...</p>",
+            resume_html="<h1>Tailored Resume</h1><p>This is a long enough tailored resume content...</p>",
             cover_letter_html="<p>Cover letter content that is also long enough...</p>",
             company_name="Test Company",
             job_title="Software Engineer",
@@ -201,7 +201,7 @@ class TestAnalyzeJob:
         mock_result = MagicMock()
         mock_result.output = ResumeMatchResult(
             match_score=50,
-            tailored_resume_html="<h1>...</h1>",
+            resume_html="<h1>...</h1>",
             cover_letter_html="<p>...</p>",
             company_name="Unknown",
             job_title="Unknown",
@@ -300,14 +300,14 @@ class TestGeneratePDF:
 
     def test_generate_pdf_no_content(self, client, db_session, sample_resume):
         """Test PDF generation when no content exists."""
-        # Create a job with empty tailored_resume
+        # Create a job with empty resume
         job = Job(
             resume_id=sample_resume.id,
             url="https://example.com/job",
             company="Test Company",
             title="Engineer",
             original_jd="JD",
-            tailored_resume="",  # Empty content
+            resume="",  # Empty content
             cover_letter="",
             match_score=90,
             status=JobStatus.todo,
@@ -355,7 +355,7 @@ class TestRegenerateJob:
         mock_result = MagicMock()
         mock_result.output = ResumeMatchResult(
             match_score=95,
-            tailored_resume_html="<h1>Updated Tailored Resume</h1>",
+            resume_html="<h1>Updated Tailored Resume</h1>",
             cover_letter_html="<p>Updated Cover letter</p>",
             company_name="Test Company",
             job_title="Software Engineer",
@@ -381,7 +381,7 @@ class TestRegenerateJob:
         mock_result = MagicMock()
         mock_result.output = ResumeMatchResult(
             match_score=90,
-            tailored_resume_html="<h1>Regenerated</h1>",
+            resume_html="<h1>Regenerated</h1>",
             cover_letter_html="<p>Regenerated</p>",
             company_name="Test Company",
             job_title="Software Engineer",
@@ -436,7 +436,7 @@ class TestRegenerateJob:
             # So the conditional updates in main.py won't happen, and it will return the ORIGINAL values.
             # BUT if extract_agent_data returns something that fails 'if data:', it returns 500.
             # In our implementation: 'if data:' on MagicMock is True.
-            # Then getattr(data, 'tailored_resume_html', None) returns None for MagicMock.
+            # Then getattr(data, 'resume_html', None) returns None for MagicMock.
             # The code should actually return a 200 with original values in this specific mock case,
             # or we can test the error path more strictly.
 
@@ -477,7 +477,7 @@ class TestUpdateJob:
             company="Test Company",
             title="Engineer",
             original_jd="JD",
-            tailored_resume="HTML",
+            resume="HTML",
             cover_letter="HTML",
             match_score=90,
             status=JobStatus.applied,
@@ -596,7 +596,7 @@ class TestDOCXGeneration:
             company="Empty Co",
             title="Ghost",
             original_jd="JD",
-            tailored_resume="",  # Empty
+            resume="",  # Empty
             cover_letter=None,
             match_score=0,
             status=JobStatus.todo,

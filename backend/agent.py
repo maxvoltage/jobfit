@@ -15,8 +15,8 @@ class ResumeMatchResult(BaseModel):
     match_score: int = Field(
         ..., ge=0, le=100, description="Match score between 0-100 indicating how well the resume fits the job"
     )
-    tailored_resume_html: str = Field(
-        ..., description="The rewritten resume content in clean HTML format, ready for PDF conversion with WeasyPrint"
+    resume_html: str = Field(
+        ..., description="The formatted resume content in clean HTML structure, preserve the original source wording"
     )
     cover_letter_html: str = Field(
         ..., description="A tailored cover letter in clean HTML format, ready for PDF conversion with WeasyPrint"

@@ -110,7 +110,7 @@ JobFit is a full-stack web application with a React frontend and FastAPI backend
 - `POST /api/resumes/manual`: Save pasted resume text
 - `POST /api/analyze`: Analyze job and tailor resume
 - `PATCH /api/jobs/{id}`: Update job content (for editing)
-- `GET /api/jobs/{id}/pdf`: Download tailored resume/cover letter as PDF
+- `GET /api/jobs/{id}/pdf`: Download resume/cover letter as PDF
 - `POST /api/jobs/{id}/regenerate`: Regenerate content with custom instructions
 
 ### Project Structure

@@ -23,7 +23,7 @@ from agent import clean_resume_agent, resume_agent, resume_agent_no_tools
 from database import Base, engine, get_db
 from logger import log_ai_interaction, log_debug, log_error, log_requests_middleware
 from migrations import run_migrations
-from prompts import get_initial_tailoring_prompt, get_regeneration_prompt
+from prompts import get_initial_matching_prompt, get_regeneration_prompt
 from tools import extract_text_from_pdf, scrape_job_description
 
 # Initialize Logfire for elegant AI monitoring
@@ -39,7 +39,7 @@ run_migrations()
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="JobFit API", description="AI-powered resume tailoring service", version="1.0.0")
+app = FastAPI(title="JobFit API", description="AI-powered resume matching service", version="1.0.0")
 
 logfire.instrument_fastapi(app)
 
@@ -558,7 +558,7 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
     # Run the AI agent
     try:
         if request.description:
-            prompt = get_initial_tailoring_prompt(
+            prompt = get_initial_matching_prompt(
                 resume_content=resume.content, job_source="the provided text", job_content=request.description
             )
             log_ai_interaction("AI REQUEST (MANUAL)", prompt, "blue")
@@ -566,7 +566,7 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
             # Use no-tools agent for manual entry to avoid tool call errors
             result = await resume_agent_no_tools.run(prompt)
         else:
-            prompt = get_initial_tailoring_prompt(resume.content, request.url)
+            prompt = get_initial_matching_prompt(resume.content, request.url)
             log_ai_interaction("AI REQUEST (URL)", prompt, "blue")
 
             result = await resume_agent.run(prompt)
@@ -585,7 +585,7 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
             "score": str(getattr(data, "match_score", 0)),
             "improvements": [str(i) for i in getattr(data, "key_improvements", [])],
             "extracted_jd": str(getattr(data, "extracted_job_description", "")),
-            "resume_html": str(getattr(data, "tailored_resume_html", "")),
+            "resume_html": str(getattr(data, "resume_html", "")),
             "cover_letter_html": str(getattr(data, "cover_letter_html", "")),
         }
         log_ai_interaction("AI RESPONSE", json.dumps(response_preview, indent=2), "green", format="json")
@@ -619,7 +619,7 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
             company=company,
             title=title,
             original_jd=getattr(data, "extracted_job_description", request.description or ""),
-            tailored_resume=getattr(data, "tailored_resume_html", ""),
+            resume=getattr(data, "resume_html", ""),
             cover_letter=getattr(data, "cover_letter_html", ""),
             match_score=match_score,
             status=models.JobStatus.todo,
@@ -635,7 +635,7 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
             "job_id": job.id,
             "score": job.match_score,
             "company": job.company,
-            "tailored_resume": job.tailored_resume,
+            "resume": job.resume,
             "cover_letter": job.cover_letter,
         }
 
@@ -666,7 +666,7 @@ async def get_job(job_id: int, db: Session = Depends(get_db)):
 class UpdateJobRequest(BaseModel):
     status: str | None = None
     applied: bool | None = None
-    tailored_resume: str | None = None
+    resume: str | None = None
     cover_letter: str | None = None
 
 
@@ -686,8 +686,8 @@ async def update_job(job_id: int, request: UpdateJobRequest, db: Session = Depen
             # If unticked and was previously 'applied', revert to 'todo'
             job.status = models.JobStatus.todo
 
-    if request.tailored_resume is not None:
-        job.tailored_resume = request.tailored_resume
+    if request.resume is not None:
+        job.resume = request.resume
     if request.cover_letter is not None:
         job.cover_letter = request.cover_letter
 
@@ -702,7 +702,7 @@ async def generate_pdf(
     pdf_type: str = "resume",  # "resume" or "cover"
     db: Session = Depends(get_db),
 ):
-    """Generate a PDF from the tailored resume or cover letter."""
+    """Generate a PDF from the resume or cover letter."""
 
     job = db.query(models.Job).filter(models.Job.id == job_id).first()
     if not job:
@@ -713,8 +713,8 @@ async def generate_pdf(
         html_content = job.cover_letter
         log_debug(f"Generating PDF for cover letter (Job ID: {job_id})")
     else:
-        html_content = job.tailored_resume
-        log_debug(f"Generating PDF for tailored resume (Job ID: {job_id})")
+        html_content = job.resume
+        log_debug(f"Generating PDF for resume (Job ID: {job_id})")
 
     if not html_content:
         log_error(f"PDF generation aborted: No {pdf_type} content found for Job ID {job_id}")
@@ -754,13 +754,13 @@ async def generate_job_docx(
     type: str = "resume",  # "resume" or "cover"
     db: Session = Depends(get_db),
 ):
-    """Generate a DOCX file from the tailored resume or cover letter (HTML content)."""
+    """Generate a DOCX file from the resume or cover letter (HTML content)."""
     job = db.query(models.Job).filter(models.Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
     # Get the HTML content
-    html_content = job.cover_letter if type == "cover" else job.tailored_resume
+    html_content = job.cover_letter if type == "cover" else job.resume
     if not html_content:
         raise HTTPException(status_code=400, detail=f"No {type} content available for Word generation")
 
@@ -834,59 +834,43 @@ async def delete_job(job_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/jobs/{job_id}/regenerate")
 async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Session = Depends(get_db)):
-    """Regenerate tailored resume and cover letter with optional user prompt."""
+    """Regenerate resume and cover letter with optional user prompt."""
     job = db.query(models.Job).filter(models.Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    resume = db.query(models.Resume).filter(models.Resume.id == job.resume_id).first()
-    if not resume:
+    # Ensure the job has a source resume linked
+    if not job.source_resume:
         raise HTTPException(status_code=404, detail="Original resume not found")
 
+    # Run the AI agent
     try:
-        user_prompt = request.prompt or "Please regenerate the content."
-
-        # Construct the context for the agent using the template
-        context = get_regeneration_prompt(
-            resume_content=resume.content,
-            job_description=job.original_jd or job.url,
-            current_tailored=job.tailored_resume,
+        prompt = get_regeneration_prompt(
+            resume_content=job.source_resume.content,
+            job_description=job.original_jd,
+            current_tailored=job.resume,
             current_cover=job.cover_letter,
-            user_request=user_prompt,
+            user_request=request.prompt or "Update the cover letter as requested.",
             company=job.company,
             title=job.title,
         )
-        log_ai_interaction("REGENERATE REQUEST", context, "cyan")
 
-        # We use resume_agent_no_tools since we already have all the info
-        result = await resume_agent_no_tools.run(context)
+        log_ai_interaction("REGENERATE REQUEST", prompt, "blue")
+        result = await resume_agent_no_tools.run(prompt)
         data = extract_agent_data(result)
 
         if data:
-            # Log response nicely
-            import json
-
-            # Log response nicely
-            # Safe stringification of values to handle MagicMocks in tests
-            response_preview = {
-                "score": str(getattr(data, "match_score", "N/A")),
-                "resume_html": str(getattr(data, "tailored_resume_html", "")),
-                "cover_letter_html": str(getattr(data, "cover_letter_html", "")),
-            }
-            log_ai_interaction("REGENERATE RESPONSE", json.dumps(response_preview, indent=2), "green", format="json")
-            # Update only if the field is present in the data AND it's a valid primitive/string
-            # Using str() or int() transformation to ensure it's not a MagicMock or other object
-            new_resume = getattr(data, "tailored_resume_html", None)
+            # Update job in DB
+            # Note: We still get resume_html back but our prompt tells it to keep it the same
+            new_resume = getattr(data, "resume_html", None)
             new_cover = getattr(data, "cover_letter_html", None)
             new_score = getattr(data, "match_score", None)
 
-            # Additional validation: if fields are mock objects, don't use them
-            # This is important for both tests and production robustness
-            if new_resume is not None and not hasattr(new_resume, "__call__"):
-                job.tailored_resume = str(new_resume)
-            if new_cover is not None and not hasattr(new_cover, "__call__"):
+            if new_resume is not None:
+                job.resume = str(new_resume)
+            if new_cover is not None:
                 job.cover_letter = str(new_cover)
-            if new_score is not None and not hasattr(new_score, "__call__"):
+            if new_score is not None:
                 try:
                     job.match_score = int(new_score)
                 except (ValueError, TypeError):
@@ -895,7 +879,16 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
             db.commit()
             db.refresh(job)
 
-            return {"resume": job.tailored_resume, "coverLetter": job.cover_letter, "matchScore": job.match_score}
+            # Log response
+            import json
+            response_preview = {
+                "score": job.match_score,
+                "resume_html_len": len(job.resume),
+                "cover_letter_html_len": len(job.cover_letter) if job.cover_letter else 0,
+            }
+            log_ai_interaction("REGENERATE RESPONSE", json.dumps(response_preview, indent=2), "green", format="json")
+
+            return {"resume": job.resume, "coverLetter": job.cover_letter, "matchScore": job.match_score}
         else:
             log_error("extract_agent_data returned None or empty result")
             raise HTTPException(status_code=500, detail="Failed to get data from agent")

@@ -10,7 +10,7 @@ interface BackendJob {
   match_score: number;
   url: string;
   original_jd: string;
-  tailored_resume: string;
+  resume: string;
   cover_letter: string;
   status: string;
 }
@@ -24,8 +24,8 @@ const normalizeJob = (job: BackendJob): JobApplication => ({
   matchScore: job.match_score,
   jobUrl: job.url,
   jobDescription: job.original_jd || '',
-  tailoredResume: job.tailored_resume,
-  coverLetter: job.cover_letter, // Backend needs to return this
+  resume: job.resume,
+  coverLetter: job.cover_letter,
   status: job.status as JobApplication['status'],
   applied: job.status === 'applied',
 });
@@ -59,9 +59,9 @@ export async function getApplication(id: string): Promise<JobApplication | undef
 export async function updateApplication(id: string, updates: Partial<JobApplication>): Promise<JobApplication | undefined> {
   // Map frontend camelCase to backend snake_case
   const backendUpdates: Record<string, unknown> = { ...updates as Record<string, unknown> };
-  if (updates.tailoredResume !== undefined) {
-    backendUpdates.tailored_resume = updates.tailoredResume;
-    delete backendUpdates.tailoredResume;
+  if (updates.resume !== undefined) {
+    backendUpdates.resume = updates.resume;
+    delete (backendUpdates as any).resume;
   }
   if (updates.coverLetter !== undefined) {
     backendUpdates.cover_letter = updates.coverLetter;
@@ -98,7 +98,7 @@ export async function analyzeJobUrl(url: string, resumeId: number): Promise<Anal
     jobTitle: data.title || 'Software Engineer',
     jobDescription: '',
     matchScore: data.score,
-    tailoredResume: data.tailored_resume,
+    resume: data.resume,
     coverLetter: data.cover_letter || '',
   };
 }
@@ -122,7 +122,7 @@ export async function analyzeJobDescription(description: string, resumeId: numbe
     jobTitle: data.title || 'Software Engineer',
     jobDescription: description,
     matchScore: data.score,
-    tailoredResume: data.tailored_resume,
+    resume: data.resume,
     coverLetter: data.cover_letter || '',
   };
 }

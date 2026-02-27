@@ -47,7 +47,7 @@ describe('JobDetail Page', () => {
         matchScore: 85,
         applied: false,
         jobDescription: 'Original JD',
-        tailoredResume: '<html>Resume</html>',
+        resume: '<html>Resume</html>',
         coverLetter: '<html>Cover Letter</html>',
         dateAdded: '2024-01-22',
         status: 'todo'
@@ -200,7 +200,7 @@ describe('JobDetail Page', () => {
         // Mock next call to return regenerated content
         vi.mocked(api.getApplication).mockResolvedValue({
             ...mockJob,
-            tailoredResume: '<html>Regenerated Resume</html>',
+            resume: '<html>Regenerated Resume</html>',
             coverLetter: '<html>Regenerated Cover Letter</html>',
             matchScore: 95
         } as unknown as JobApplication);
@@ -270,7 +270,7 @@ describe('JobDetail Page', () => {
         const user = userEvent.setup();
         const jobWithBody = {
             ...mockJob,
-            tailoredResume: '<html><head></head><body><p>Original resume content</p></body></html>',
+            resume: '<html><head></head><body><p>Original resume content</p></body></html>',
             coverLetter: '<html><head></head><body><p>Original cover letter</p></body></html>'
         };
         vi.mocked(api.getApplication).mockResolvedValue(jobWithBody as unknown as JobApplication);
@@ -305,7 +305,7 @@ describe('JobDetail Page', () => {
         // Verify updateApplication was called with the content
         await waitFor(() => {
             expect(api.updateApplication).toHaveBeenCalledWith('1', expect.objectContaining({
-                tailoredResume: expect.any(String),
+                resume: expect.any(String),
                 coverLetter: expect.any(String)
             }));
         });

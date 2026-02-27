@@ -51,7 +51,7 @@ describe('NewApplication Auto-save and Redirect', () => {
             companyName: 'Test Corp',
             jobTitle: 'Backend Developer',
             matchScore: 90,
-            tailoredResume: '<html>Content</html>',
+            resume: '<html>Content</html>',
             cover_letter: '<html>Letter</html>'
         };
 

@@ -55,7 +55,7 @@ This document outlines the validation logic and error messages implemented in th
 ## 4. System & PDF Generation
 
 *   **Case: Missing Metadata for PDF**
-    *   **Logic:** Checks if `tailored_resume` or `cover_letter` fields are empty before attempting to run WeasyPrint.
+    *   **Logic:** Checks if `resume` or `cover_letter` fields are empty before attempting to run WeasyPrint.
     *   **Error Message:** `"No {pdf_type} content available for PDF generation"`
     *   **Status Code:** `400 Bad Request`
     *   **Test coverage:** `test_generate_pdf_no_content`
@@ -72,7 +72,7 @@ This document outlines the validation logic and error messages implemented in th
 
 ### PATCH `/api/jobs/{job_id}`
 *   **Case: Update Tailored Resume/Cover Letter**
-    *   **Logic:** Allows updating the `tailored_resume` and `cover_letter` fields after AI generation. This enables users to manually edit content before downloading PDFs. The endpoint accepts optional fields: `status`, `applied`, `tailored_resume`, and `cover_letter`.
+    *   **Logic:** Allows updating the `resume` and `cover_letter` fields after AI generation. This enables users to manually edit content before downloading PDFs. The endpoint accepts optional fields: `status`, `applied`, `resume`, and `cover_letter`.
     *   **Error Message:** `"Job not found"`
     *   **Status Code:** `404 Not Found` (if job doesn't exist)
     *   **Test coverage:** Existing `test_update_job_status` covers the endpoint

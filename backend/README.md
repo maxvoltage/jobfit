@@ -1,6 +1,6 @@
 # JobFit Backend
 
-AI-powered resume tailoring service built with FastAPI, PydanticAI, and SQLAlchemy.
+AI-powered resume matching service built with FastAPI, PydanticAI, and SQLAlchemy.
 
 ## Features
 
@@ -8,7 +8,7 @@ AI-powered resume tailoring service built with FastAPI, PydanticAI, and SQLAlche
 - 🤖 **AI-Powered Tailoring**: Use PydanticAI agents to tailor resumes to specific job descriptions
 - 🔍 **Job Scraping**: Automatically fetch job descriptions from URLs using Jina Reader
 - 📊 **Match Scoring**: Get AI-generated match scores (0-100) for each job
-- 📥 **PDF Generation**: Export tailored resumes as professional PDFs using WeasyPrint
+- 📥 **PDF Generation**: Export resumes as professional PDFs using WeasyPrint
 - 💾 **SQLite Database**: Local-first data storage with SQLAlchemy
 
 ## Prerequisites
@@ -133,7 +133,7 @@ backend/
 - `id`: Primary key
 - `name`: Resume name (from filename)
 - `content`: Extracted text content
-- `is_selected`: Boolean flag for the currently selected resume used for tailoring.
+- `is_selected`: Boolean flag for the currently selected resume used for matching.
 
 ### Job Table
 - `id`: Primary key
@@ -142,7 +142,7 @@ backend/
 - `company`: Company name
 - `title`: Job title
 - `original_jd`: Original job description
-- `tailored_resume`: AI-tailored resume HTML
+- `resume`: AI-resume HTML
 - `match_score`: Match score (0-100)
 - `status`: Application status (todo/applied/interview)
 - `created_at`: Timestamp
@@ -150,9 +150,9 @@ backend/
 ## Database Storage
 
 ### Location
-- **Local (Direct)**: By default, the database is stored as `jobfit.db` in the project root.
+- **Standard**: The database is stored as `data/jobfit.db`.
 - **Docker/Production**: The database is located at `/app/data/jobfit.db`.
-- **Docker Compose**: The `/app/data` directory is mapped to the `./data` folder in your project root.
+- **Automatic Resolution**: The backend automatically resolves the relative path `sqlite:///data/jobfit.db` against the project root, making it compatible with both local terminal runs and Docker.
 
 ### Rationale
 We store the database in a dedicated `/app/data` volume (or host-mapped folder) to ensure **data persistence**. Since Docker containers are ephemeral (files inside are lost when the container is deleted), mapping the SQLite file to your local machine ensures your resumes and application history are preserved across restarts and updates.
