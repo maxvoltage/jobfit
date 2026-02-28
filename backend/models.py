@@ -35,14 +35,14 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    resume_id: Mapped[int] = mapped_column(ForeignKey("resumes.id"))
+    resume_id: Mapped[Optional[int]] = mapped_column(ForeignKey("resumes.id"))
     url: Mapped[Optional[str]]
     company: Mapped[str]
     title: Mapped[str]
     original_jd: Mapped[str]
     resume: Mapped[str]
     cover_letter: Mapped[Optional[str]]
-    match_score: Mapped[int]
+    match_score: Mapped[Optional[int]]
     status: Mapped[JobStatus] = mapped_column(SQLEnum(JobStatus), default=JobStatus.todo)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 

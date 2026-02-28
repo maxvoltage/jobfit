@@ -4,6 +4,7 @@ from pydantic_ai import Agent
 from config import LLM_NAME
 from prompts import (
     CLEAN_RESUME_SYSTEM_PROMPT,
+    EXTRACT_ONLY_SYSTEM_PROMPT,
     RESUME_SYSTEM_PROMPT,
 )
 from tools import scrape_job_description
@@ -29,6 +30,15 @@ class ResumeMatchResult(BaseModel):
     )
 
 
+class JDExtractionResult(BaseModel):
+    """Structured output for a quick job metadata extraction."""
+
+    match_score: int | None = None
+    company_name: str
+    job_title: str
+    extracted_job_description: str
+
+
 # Initialize the agent
 resume_agent = Agent(
     LLM_NAME,  # Loaded from .env file
@@ -50,4 +60,22 @@ resume_agent_no_tools = Agent(
 clean_resume_agent = Agent(
     LLM_NAME,
     system_prompt=CLEAN_RESUME_SYSTEM_PROMPT,
+)
+
+
+# Agent for simply extracting metadata from a JD link or text
+extraction_agent = Agent(
+    LLM_NAME,
+    output_type=JDExtractionResult,
+    system_prompt=EXTRACT_ONLY_SYSTEM_PROMPT,
+    tools=[scrape_job_description],
+)
+
+
+# Extraction without tools (manually pasted text)
+extraction_agent_no_tools = Agent(
+    LLM_NAME,
+    output_type=JDExtractionResult,
+    system_prompt=EXTRACT_ONLY_SYSTEM_PROMPT,
+    tools=[],
 )

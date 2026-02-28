@@ -89,8 +89,39 @@ describe('NewApplication Auto-save and Redirect', () => {
 
         // Wait for analysis and redirect
         await waitFor(() => {
-            expect(api.analyzeJobDescription).toHaveBeenCalledWith('Awesome job description', 1);
+            expect(api.analyzeJobDescription).toHaveBeenCalledWith('Awesome job description', 1, false);
             expect(mockNavigate).toHaveBeenCalledWith('/job/123');
+        });
+    });
+
+    it('should trigger full analysis when checkbox is checked', async () => {
+        const user = userEvent.setup();
+        vi.mocked(api.analyzeJobDescription).mockResolvedValue({ id: '124' } as unknown as (api.AnalyzeJobResponse & { id: string }));
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <NewApplication />
+                </MemoryRouter>
+            </QueryClientProvider>
+        );
+
+        // Switch to manual tab
+        await user.click(screen.getByRole('tab', { name: /manual entry/i }));
+
+        // Fill description
+        await user.type(screen.getByPlaceholderText(/paste the full job description/i), 'Another job');
+
+        // Check the "Full Analysis" checkbox
+        const checkbox = screen.getByLabelText(/score & generate cover letter/i);
+        await user.click(checkbox);
+
+        // Click Analyze
+        const analyzeButton = screen.getAllByRole('button', { name: /analyze/i }).find(btn => btn.closest('[data-state="active"]'));
+        await user.click(analyzeButton!);
+
+        await waitFor(() => {
+            expect(api.analyzeJobDescription).toHaveBeenCalledWith('Another job', 1, true);
         });
     });
 

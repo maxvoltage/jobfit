@@ -262,7 +262,7 @@ export default function JobDetail() {
                         ) : (
                           <RefreshCw className="mr-2 h-4 w-4" />
                         )}
-                        Regenerate
+                        {application.matchScore === null ? "Generate Analysis" : "Regenerate"}
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md">
@@ -400,7 +400,24 @@ export default function JobDetail() {
                     <MarkdownPreview content={application.coverLetter} />
                   </div>
                 ) : (
-                  <EmptyState message="No cover letter generated yet" />
+                  <div className="flex flex-col items-center justify-center h-[400px] text-center space-y-4">
+                    <EmptyState
+                      message="No cover letter generated yet."
+                      description="Ready to apply? Generate your matching analysis and cover letter in seconds."
+                    />
+                    <Button
+                      onClick={() => regenerateMutation.mutate()}
+                      disabled={regenerateMutation.isPending}
+                      className="gap-2"
+                    >
+                      {regenerateMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Generate Matching Score & CV
+                    </Button>
+                  </div>
                 )}
               </div>
             </TabsContent>
@@ -466,10 +483,11 @@ function MarkdownPreview({ content }: { content: string }) {
 }
 
 
-function EmptyState({ message }: { message: string }) {
+function EmptyState({ message, description }: { message: string, description?: string }) {
   return (
-    <div className="flex items-center justify-center h-[300px] text-center">
-      <p className="text-muted-foreground">{message}</p>
+    <div className="flex flex-col items-center justify-center h-full text-center space-y-2">
+      <p className="text-lg font-medium text-foreground">{message}</p>
+      {description && <p className="text-sm text-muted-foreground max-w-sm">{description}</p>}
     </div>
   );
 }

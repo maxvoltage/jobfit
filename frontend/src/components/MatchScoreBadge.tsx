@@ -2,11 +2,25 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface MatchScoreBadgeProps {
-  score: number;
+  score: number | null | undefined;
   className?: string;
 }
 
 export function MatchScoreBadge({ score, className }: MatchScoreBadgeProps) {
+  if (score === null || score === undefined) {
+    return (
+      <Badge
+        className={cn(
+          'font-medium px-2.5 py-0.5 bg-secondary/30 text-muted-foreground border-border',
+          className
+        )}
+        variant="outline"
+      >
+        &mdash;
+      </Badge>
+    );
+  }
+
   const getScoreVariant = (score: number) => {
     if (score >= 80) return 'success';
     if (score >= 50) return 'warning';

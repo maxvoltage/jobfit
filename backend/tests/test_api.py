@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agent import ResumeMatchResult
+from agent import JDExtractionResult, ResumeMatchResult
 from models import Job, JobStatus
 
 """
@@ -218,6 +218,79 @@ class TestAnalyzeJob:
 
             assert response.status_code == 400
             assert "valid job description" in response.json()["detail"].lower()
+
+    def test_analyze_job_fast_mode_success(self, client, sample_resume):
+        """Test JD-only extraction (Fast Mode) without resume matching."""
+        # Mock the extraction agent response
+        mock_result = MagicMock()
+        mock_result.output = JDExtractionResult(
+            match_score=None,
+            company_name="Fast Co",
+            job_title="Turbo Dev",
+            extracted_job_description=(
+                "This is a nicely formatted job description for the Fast Mode extraction test. "
+                "It should be long enough to pass validation and stored without a score."
+            ),
+        )
+
+        with patch("main.extraction_agent.run", new_callable=AsyncMock) as mock_agent:
+            mock_agent.return_value = mock_result
+
+            response = client.post(
+                "/api/analyze",
+                json={"url": "https://example.com/fast-job", "resume_id": sample_resume.id, "generate_cv": False},
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["score"] is None
+            assert data["company"] == "Fast Co"
+            assert "job_id" in data
+
+    def test_analyze_job_jd_only_triggers_extraction_agent(self, client, sample_resume):
+        """Verify that Fast Mode (generate_cv=False) ONLY uses extraction_agent."""
+        mock_extract = MagicMock()
+        mock_extract.output = JDExtractionResult(
+            match_score=None, company_name="C1", job_title="T1", extracted_job_description="JD"
+        )
+
+        # Patch both agents to see which one is called
+        with (
+            patch("main.extraction_agent.run", new_callable=AsyncMock) as mock_extract_run,
+            patch("main.resume_agent.run", new_callable=AsyncMock) as mock_resume_run,
+        ):
+            mock_extract_run.return_value = mock_extract
+
+            client.post(
+                "/api/analyze", json={"url": "http://j.ai", "resume_id": sample_resume.id, "generate_cv": False}
+            )
+
+            assert mock_extract_run.called
+            assert not mock_resume_run.called
+
+    def test_analyze_job_full_analysis_triggers_resume_agent(self, client, sample_resume):
+        """Verify that Full Mode (generate_cv=True) ONLY uses resume_agent."""
+        mock_resume = MagicMock()
+        mock_resume.output = ResumeMatchResult(
+            match_score=90,
+            resume_html="R",
+            cover_letter_html="C",
+            company_name="C1",
+            job_title="T1",
+            key_improvements=[],
+            extracted_job_description="JD",
+        )
+
+        with (
+            patch("main.extraction_agent.run", new_callable=AsyncMock) as mock_extract_run,
+            patch("main.resume_agent.run", new_callable=AsyncMock) as mock_resume_run,
+        ):
+            mock_resume_run.return_value = mock_resume
+
+            client.post("/api/analyze", json={"url": "http://j.ai", "resume_id": sample_resume.id, "generate_cv": True})
+
+            assert mock_resume_run.called
+            assert not mock_extract_run.called
 
 
 class TestGetJobs:

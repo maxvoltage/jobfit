@@ -349,5 +349,39 @@ describe('JobDetail Page', () => {
         });
         expect(api.updateApplication).not.toHaveBeenCalled();
     });
+
+    it('should display "Generate Analysis" button and CTA when matchScore is null', async () => {
+        const user = userEvent.setup();
+        const jdOnlyJob = {
+            ...mockJob,
+            matchScore: null,
+            coverLetter: ''
+        };
+        vi.mocked(api.getApplication).mockResolvedValue(jdOnlyJob as unknown as JobApplication);
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={['/job/1']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <Routes>
+                        <Route path="/job/:id" element={<JobDetail />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
+        );
+
+        await waitFor(() => screen.getByText('Test Company'));
+
+        // Check if "Generate Analysis" button exists instead of "Regenerate"
+        expect(screen.getByRole('button', { name: /generate analysis/i })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^regenerate$/i })).not.toBeInTheDocument();
+
+        // Switch to cover letter tab
+        const coverTab = screen.getByRole('tab', { name: /cover letter/i });
+        await user.click(coverTab);
+
+        // Check for the CTA message in the empty cover letter tab
+        expect(screen.getByText(/Ready to apply\?/i)).toBeInTheDocument();
+        expect(screen.getByText(/Generate Matching Score & CV/i)).toBeInTheDocument();
+    });
 });
 

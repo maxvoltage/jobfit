@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Link2, FileText, Loader2, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Link2, FileText, Loader2, X, Rocket, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Resume } from '@/types';
 import { ResumeSelector } from '@/components/ResumeSelector';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function NewApplication() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export default function NewApplication() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedResumeId, setSelectedResumeId] = useState<string>('');
   const [isResumeSelectorOpen, setIsResumeSelectorOpen] = useState(false);
+  const [generateCv, setGenerateCv] = useState(false); // Default to JD only (false)
 
   const { data: resumes = [], refetch: refetchResumes } = useQuery({
     queryKey: ['resumes'],
@@ -48,7 +50,7 @@ export default function NewApplication() {
 
     setIsAnalyzing(true);
     try {
-      const result = await analyzeJobUrl(jobUrl, parseInt(selectedResumeId));
+      const result = await analyzeJobUrl(jobUrl, parseInt(selectedResumeId), generateCv);
 
       // Invalidate applications query so dashboard refreshes
       queryClient.invalidateQueries({ queryKey: ['applications'] });
@@ -84,7 +86,7 @@ export default function NewApplication() {
 
     setIsAnalyzing(true);
     try {
-      const result = await analyzeJobDescription(manualDescription, parseInt(selectedResumeId));
+      const result = await analyzeJobDescription(manualDescription, parseInt(selectedResumeId), generateCv);
 
       // Invalidate applications query so dashboard refreshes
       queryClient.invalidateQueries({ queryKey: ['applications'] });
@@ -107,6 +109,44 @@ export default function NewApplication() {
       setIsAnalyzing(false);
     }
   };
+
+  const CvToggle = ({ id }: { id: string }) => (
+    <div className="space-y-2">
+      <Label htmlFor={id} className="input-label cursor-pointer">Score & Generate Cover Letter</Label>
+      <div className={`flex items-center space-x-3 p-4 border rounded-xl bg-primary/5 border-primary/10 transition-all ${!selectedResumeId ? 'opacity-40 pointer-events-none' : ''}`}>
+        <Checkbox
+          id={id}
+          checked={generateCv}
+          onCheckedChange={(checked) => setGenerateCv(!!checked)}
+          disabled={!selectedResumeId}
+          className="h-5 w-5"
+        />
+        <div className="grid gap-1.5 leading-none">
+          <p className="text-xs text-muted-foreground flex items-center flex-wrap gap-2">
+            {!selectedResumeId
+              ? 'Select a resume to enable matching and CV generation.'
+              : generateCv
+                ? (
+                  <span className="flex items-center gap-2">
+                    Match with resume and generate CV
+                    <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles className="h-2.5 w-2.5" /> Full Analysis
+                    </span>
+                  </span>
+                )
+                : (
+                  <span className="flex items-center gap-2">
+                    Only extract job details
+                    <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Rocket className="h-2.5 w-2.5" /> Fast Mode
+                    </span>
+                  </span>
+                )}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="page-container">
@@ -175,10 +215,10 @@ export default function NewApplication() {
                       onChange={(e) => setJobUrl(e.target.value)}
                       className="h-11"
                     />
-                    <p className="text-sm text-muted-foreground mt-1.5">
-                      Paste the job posting URL and we'll extract the details
-                    </p>
                   </div>
+
+                  <CvToggle id="generateCvUrl" />
+
                   <Button
                     onClick={handleAnalyzeUrl}
                     disabled={isAnalyzing || !jobUrl.trim()}
@@ -187,7 +227,7 @@ export default function NewApplication() {
                     {isAnalyzing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Analyzing...
+                        {selectedResumeId ? 'Analyzing...' : 'Extracting...'}
                       </>
                     ) : (
                       'Analyze'
@@ -228,6 +268,9 @@ export default function NewApplication() {
                       className="min-h-[300px] resize-none"
                     />
                   </div>
+
+                  <CvToggle id="generateCvManual" />
+
                   <Button
                     onClick={handleAnalyzeManual}
                     disabled={isAnalyzing || !manualDescription.trim()}
@@ -236,7 +279,7 @@ export default function NewApplication() {
                     {isAnalyzing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Analyzing...
+                        {selectedResumeId ? 'Analyzing...' : 'Extracting...'}
                       </>
                     ) : (
                       'Analyze'

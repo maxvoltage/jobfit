@@ -75,11 +75,11 @@ export async function updateApplication(id: string, updates: Partial<JobApplicat
   return normalizeJob(data);
 }
 
-export async function analyzeJobUrl(url: string, resumeId: number): Promise<AnalyzeJobResponse & { id: string }> {
+export async function analyzeJobUrl(url: string, resumeId: number, generateCv: boolean = true): Promise<AnalyzeJobResponse & { id: string }> {
   const response = await fetch(`${API_BASE_URL}/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, resume_id: resumeId }),
+    body: JSON.stringify({ url, resume_id: resumeId, generate_cv: generateCv }),
   });
 
   if (!response.ok) {
@@ -99,11 +99,11 @@ export async function analyzeJobUrl(url: string, resumeId: number): Promise<Anal
   };
 }
 
-export async function analyzeJobDescription(description: string, resumeId: number): Promise<AnalyzeJobResponse & { id: string }> {
+export async function analyzeJobDescription(description: string, resumeId: number, generateCv: boolean = true): Promise<AnalyzeJobResponse & { id: string }> {
   const response = await fetch(`${API_BASE_URL}/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ description, resume_id: resumeId }),
+    body: JSON.stringify({ description, resume_id: resumeId, generate_cv: generateCv }),
   });
 
   if (!response.ok) {

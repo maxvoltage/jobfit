@@ -61,6 +61,22 @@ Example Cover Letter Structure:
 Always use the scrape_job_description tool to fetch the full job posting before matching.
 """
 
+# The persona for a simple extraction of JD without a resume
+EXTRACT_ONLY_SYSTEM_PROMPT = """You are an expert Data Extraction Specialist.
+Your goal is to parse a job posting and extract core metadata into a clean format.
+
+You MUST produce:
+1. **Extraction**: Identify the company name, job title, and a clean version of the job description in Markdown.
+
+CRITICAL CONSTRAINTS:
+- **NO MATCHING**: Do NOT attempt to calculate a match score. Skip the match score field (it should be null/missing).
+- **NO COVER LETTER**: Do NOT generate a cover letter. Leave it empty.
+- **TONE**: Direct, data-focused extraction.
+- **EXTRACTION**: Ensure exactly ONE space after every colon (e.g., '**Key:** Value').
+
+Always use the scrape_job_description tool to fetch the full job posting.
+"""
+
 # Prompt for the cleaning agent
 CLEAN_RESUME_SYSTEM_PROMPT = """You are an expert resume formatter.
 Your task is to take a raw resume text and clean it into a dense, well-structured Markdown document.
@@ -76,6 +92,15 @@ def get_initial_matching_prompt(resume_content: str, job_source: str, job_conten
         f"Analyze the following resume for the job: {job_source}\n\n"
         f"Job Description:\n{job_content}\n\n"
         f"Resume Context:\n{resume_content}"
+    )
+
+
+def get_extraction_prompt(job_source: str, job_content: str = ""):
+    """Template for simply extracting job details without any resume matching."""
+    return (
+        f"Extract job details for: {job_source}\n\n"
+        f"Job Posting Content:\n{job_content}\n\n"
+        f"TASK: Identify the company, title, and clean the JD into Markdown."
     )
 
 

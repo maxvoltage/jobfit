@@ -19,11 +19,21 @@ from weasyprint import HTML
 
 import config
 import models
-from agent import clean_resume_agent, resume_agent, resume_agent_no_tools
+from agent import (
+    clean_resume_agent,
+    extraction_agent,
+    extraction_agent_no_tools,
+    resume_agent,
+    resume_agent_no_tools,
+)
 from database import Base, engine, get_db
 from logger import log_ai_interaction, log_debug, log_error, log_requests_middleware
 from migrations import run_migrations
-from prompts import get_initial_matching_prompt, get_regeneration_prompt
+from prompts import (
+    get_extraction_prompt,
+    get_initial_matching_prompt,
+    get_regeneration_prompt,
+)
 from tools import extract_text_from_pdf, scrape_job_description
 
 # Initialize Logfire for elegant AI monitoring
@@ -62,6 +72,7 @@ class AnalyzeJobRequest(BaseModel):
     url: str | None = None
     description: str | None = None
     resume_id: int
+    generate_cv: bool = True
 
 
 class ResumeResponse(BaseModel):
@@ -91,11 +102,11 @@ class JobResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     id: int
-    resume_id: int
+    resume_id: int | None = None
     url: str | None
     company: str
     title: str
-    match_score: int
+    match_score: int | None = None
     status: str
     resume: str | None = None
     cover_letter: str | None = None
@@ -567,20 +578,29 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
 
     # Run the AI agent
     try:
-        compressed_resume = minify_text(resume.content)
-        if request.description:
-            prompt = get_initial_matching_prompt(
-                resume_content=compressed_resume, job_source="the provided text", job_content=request.description
-            )
-            log_ai_interaction("AI REQUEST (MANUAL)", prompt, "blue")
-
-            # Use no-tools agent for manual entry to avoid tool call errors
-            result = await resume_agent_no_tools.run(prompt)
+        if request.generate_cv:
+            # Mode A: Full Analysis + Cover Letter
+            compressed_resume = minify_text(resume.content)
+            if request.description:
+                prompt = get_initial_matching_prompt(
+                    resume_content=compressed_resume, job_source="the provided text", job_content=request.description
+                )
+                log_ai_interaction("AI REQUEST (MANUAL MATCH)", prompt, "blue")
+                result = await resume_agent_no_tools.run(prompt)
+            else:
+                prompt = get_initial_matching_prompt(compressed_resume, request.url)
+                log_ai_interaction("AI REQUEST (URL MATCH)", prompt, "blue")
+                result = await resume_agent.run(prompt)
         else:
-            prompt = get_initial_matching_prompt(compressed_resume, request.url)
-            log_ai_interaction("AI REQUEST (URL)", prompt, "blue")
-
-            result = await resume_agent.run(prompt)
+            # Mode B: Slim Extraction (no resume sent to AI)
+            if request.description:
+                prompt = get_extraction_prompt(job_source="the provided text", job_content=request.description)
+                log_ai_interaction("AI REQUEST (MANUAL EXTRACT)", prompt, "blue")
+                result = await extraction_agent_no_tools.run(prompt)
+            else:
+                prompt = get_extraction_prompt(request.url)
+                log_ai_interaction("AI REQUEST (URL EXTRACT)", prompt, "blue")
+                result = await extraction_agent.run(prompt)
 
         # Robust data extraction
         data = extract_agent_data(result)
@@ -590,7 +610,10 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
 
         company = getattr(data, "company_name", "Unknown Company")
         title = getattr(data, "job_title", "Unknown Title")
-        match_score = getattr(data, "match_score", 0)
+
+        # Explicitly NO score if matching wasn't requested
+        match_score = getattr(data, "match_score", None) if request.generate_cv else None
+
         extracted_jd = getattr(data, "extracted_job_description", "")
 
         # VALIDATION: If we couldn't get a real JD, don't save
