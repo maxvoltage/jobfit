@@ -552,6 +552,7 @@ def minify_text(text: str) -> str:
     if not text:
         return ""
     import re
+
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
@@ -701,18 +702,26 @@ async def generate_pdf(
 
     # Get the HTML content
     if pdf_type == "cover":
-        html_content = job.cover_letter
+        source_content = job.cover_letter
         log_debug(f"Generating PDF for cover letter (Job ID: {job_id})")
     else:
-        # Check if it's HTML or Markdown
-        is_html = job.resume.strip().startswith(("<!DOCTYPE html>", "<html"))
-        if is_html:
-            html_content = job.resume
-        else:
-            # Convert Markdown to styled HTML
-            import markdown
-            body_html = markdown.markdown(job.resume, extensions=["extra", "nl2br", "sane_lists", "smarty"])
-            html_content = f"""
+        source_content = job.resume
+        log_debug(f"Generating PDF for resume (Job ID: {job_id})")
+
+    if not source_content or source_content.strip() == "":
+        log_error(f"PDF generation aborted: No {pdf_type} content found for Job ID {job_id}")
+        raise HTTPException(status_code=400, detail=f"No {pdf_type} content available for PDF generation")
+
+    # Check if it's HTML or Markdown
+    is_html = source_content.strip().startswith(("<!DOCTYPE html>", "<html"))
+    if is_html:
+        html_content = source_content
+    else:
+        # Convert Markdown to styled HTML
+        import markdown
+
+        body_html = markdown.markdown(source_content, extensions=["extra", "nl2br", "sane_lists", "smarty"])
+        html_content = f"""
             <!DOCTYPE html>
             <html>
             <head>
@@ -791,6 +800,7 @@ async def generate_job_docx(
     else:
         # Convert Markdown to HTML for the parser
         import markdown
+
         html_content = markdown.markdown(source_content, extensions=["extra", "nl2br", "sane_lists", "smarty"])
 
     try:
@@ -901,7 +911,7 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
                     job.match_score = int(new_score)
                 except (ValueError, TypeError):
                     pass
-            
+
             # Fix: Ensure resume is restored to original content if previously empty
             # Also ensures it's in Markdown format for the new UI
             if not job.resume or job.resume.strip() == "":
@@ -912,6 +922,7 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
 
             # Log response
             import json
+
             response_preview = {
                 "score": job.match_score,
                 "resume_html_len": len(job.resume),

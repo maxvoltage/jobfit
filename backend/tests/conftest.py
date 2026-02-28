@@ -19,8 +19,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 # Mock WeasyPrint before importing main
-sys.modules["weasyprint"] = Mock()
-sys.modules["weasyprint"].HTML = Mock
+mock_weasy = Mock()
+mock_html = Mock()
+mock_html.write_pdf.return_value = b"%PDF-mock-content"
+mock_weasy.HTML.return_value = mock_html
+sys.modules["weasyprint"] = mock_weasy
 
 from database import Base, get_db  # noqa: E402
 from main import app  # noqa: E402
