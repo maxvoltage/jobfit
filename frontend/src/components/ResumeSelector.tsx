@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Check, ExternalLink, Edit2, Printer, FileDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 import {
     Dialog,
     DialogContent,
@@ -241,6 +242,7 @@ export function ResumeSelector({
 
                                     <div className="prose prose-sm max-w-none dark:prose-invert">
                                         <ReactMarkdown
+                                            remarkPlugins={[remarkBreaks]}
                                             components={{
                                                 p: ({ children }) => <p className="mb-4 break-words">{children}</p>,
                                                 h1: ({ children }) => <h1 className="text-2xl font-bold mb-3 mt-6 break-words">{children}</h1>,

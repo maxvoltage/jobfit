@@ -53,3 +53,5 @@ ignore = []
 
 [tool.ruff.lint.per-file-ignores]
 "agent.py" = ["E501"]
+"main.py" = ["E501"]
+"prompts.py" = ["E501"]

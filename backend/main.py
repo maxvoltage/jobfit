@@ -570,6 +570,122 @@ def minify_text(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
+def format_resume_as_html(markdown_content: str) -> str:
+    """Consistently format a Markdown resume into styled HTML with a locked-in theme."""
+    if not markdown_content:
+        return ""
+
+    import re
+
+    # Fix 'tight' lists in Markdown (missing blank line before first list item)
+    # This ensures lines starting with - or * are correctly parsed as bullet points
+    # even if there isn't a blank line before them.
+    markdown_content = re.sub(r"([^\n])\n([-*]) ", r"\1\n\n\2 ", markdown_content)
+    # Also handle numbered lists
+    markdown_content = re.sub(r"([^\n])\n(\d+\.) ", r"\1\n\n\2 ", markdown_content)
+
+    # Programmatic conversion via markdown library (deterministic)
+    # Adding 'nl2br' to respect single line breaks (as seen in resume headers)
+    body_html = markdown.markdown(markdown_content, extensions=["extra", "nl2br", "sane_lists", "smarty"])
+
+    return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                @page {{
+                    size: A4;
+                    margin: 2cm;
+                }}
+                body {{
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 11pt;
+                    line-height: 1.4;
+                    color: #333;
+                    background-color: transparent;
+                    margin: 0 auto;
+                    max-width: 850px;
+                    padding: 2rem;
+                }}
+
+                /* Support for dark mode preview in the app */
+                @media (prefers-color-scheme: dark) {{
+                    body {{ color: #f3f4f6; }}
+                    h1, h2, h3 {{ color: #ffffff; }}
+                    h2 {{ border-bottom: 1px solid #374151; }}
+                }}
+
+                h1, h2, h3, p, ul, ol {{ margin-top: 0; margin-bottom: 1em; }}
+
+                h1 {{
+                    font-size: 26pt;
+                    font-weight: 800;
+                    margin-bottom: 0.1em;
+                    color: #111827;
+                    text-align: left;
+                    letter-spacing: -0.02em;
+                }}
+
+                h2 {{
+                    font-size: 14pt;
+                    font-weight: 700;
+                    margin-top: 1.5em;
+                    margin-bottom: 0.8em;
+                    border-bottom: 2px solid #e5e7eb;
+                    padding-bottom: 0.2rem;
+                    color: #1f2937;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }}
+
+                h3 {{
+                    font-size: 12pt;
+                    font-weight: 600;
+                    margin-top: 1.2em;
+                    margin-bottom: 0.2em;
+                    color: #111827;
+                }}
+
+                p {{ margin-bottom: 0.8em; }}
+
+                ul, ol {{
+                    margin-bottom: 1em;
+                    padding-left: 1.5rem;
+                }}
+
+                li {{
+                    margin-bottom: 0.4em;
+                    padding-left: 0.2rem;
+                }}
+
+                ul {{ list-style-type: disc; }}
+                ol {{ list-style-type: decimal; }}
+
+                /* Ensure specific Markdown artifacts are styled correctly */
+                em {{ font-style: italic; color: inherit; opacity: 0.9; }}
+                strong {{ font-weight: 700; color: inherit; }}
+
+                /* Links */
+                a {{ color: #2563eb; text-decoration: none; }}
+                a:hover {{ text-decoration: underline; }}
+
+                /* Spacing for contact info / metadata */
+                .contact-info {{
+                    font-size: 10pt;
+                    color: #4b5563;
+                    margin-bottom: 2rem;
+                    text-align: left;
+                }}
+            </style>
+        </head>
+        <body>
+            {body_html}
+        </body>
+        </html>
+        """
+
+
 @app.post("/api/analyze")
 async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db)):
     """Analyze a job posting and match the resume."""
@@ -638,6 +754,10 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
                 ),
             )
 
+        # Consistently format the resume from the source markdown
+        resume_markdown = resume.content if resume else ""
+        resume_html = format_resume_as_html(resume_markdown)
+
         # Create new job application record
         job = models.Job(
             resume_id=resume.id if resume else None,
@@ -645,7 +765,7 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
             company=company,
             title=title,
             job_description=getattr(data, "extracted_job_description", request.description or ""),
-            resume=resume.content if resume else "",  # Save the original resume content as-is
+            resume=resume_html,
             cover_letter=getattr(data, "cover_letter_html", ""),
             match_score=match_score,
             status=models.JobStatus.todo,
@@ -755,6 +875,11 @@ async def generate_pdf(
         import markdown
 
         body_html = markdown.markdown(source_content, extensions=["extra", "nl2br", "sane_lists", "smarty"])
+
+        # Use different fonts for resume vs cover letter to match professional standards
+        font_family = "'Helvetica', sans-serif" if pdf_type == "resume" else "'Georgia', serif"
+        h1_align = "left" if pdf_type == "resume" else "center"
+
         html_content = f"""
             <!DOCTYPE html>
             <html>
@@ -762,12 +887,12 @@ async def generate_pdf(
                 <meta charset="UTF-8">
                 <style>
                     @page {{ size: A4; margin: 2cm; }}
-                    body {{ font-family: 'Georgia', serif; font-size: 11pt; line-height: 1.5; color: #333; }}
+                    body {{ font-family: {font_family}; font-size: 11pt; line-height: 1.5; color: #333; }}
                     h1, h2, h3, p, ul {{ margin: 0; }}
-                    h1 {{ font-size: 24pt; margin-bottom: 0.2em; color: #1a1a1a; }}
+                    h1 {{ font-size: 24pt; margin-bottom: 0.2em; color: #1a1a1a; text-align: {h1_align}; }}
                     h2 {{ font-size: 14pt; margin-top: 1.2em; margin-bottom: 0.4em; border-bottom: 1px solid #ccc;
-                        padding-bottom: 0.1em; }}
-                    h3 {{ font-size: 12pt; margin-top: 1em; margin-bottom: 0.05em; }}
+                        padding-bottom: 0.1em; color: #1a1a1a; }}
+                    h3 {{ font-size: 12pt; margin-top: 1em; margin-bottom: 0.05em; color: #333; }}
                     p {{ margin-bottom: 0.6em; }}
                     ul {{ margin-top: 0.2em; margin-bottom: 0.8em; padding-left: 1.5em; list-style-type: disc; }}
                     li {{ margin-bottom: 0.3em; }}
@@ -975,9 +1100,9 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
                     pass
 
             # Fix: Ensure resume is restored to original content if previously empty
-            # Also ensures it's in Markdown format for the new UI
+            # Also ensures it's in HTML format for the UI (iframe preview)
             if not job.resume or job.resume.strip() == "":
-                job.resume = source_resume.content
+                job.resume = format_resume_as_html(source_resume.content)
 
             db.commit()
             db.refresh(job)
