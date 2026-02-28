@@ -24,14 +24,14 @@ describe('ResumeEditor Component', () => {
         id: 1,
         name: 'Test Resume',
         content: '# Old Content',
-        is_selected: true
+        isSelected: true
     };
 
     const mockResume2: Resume = {
         id: 2,
         name: 'Test Resume 2',
         content: '# New Content',
-        is_selected: false
+        isSelected: false
     };
 
     it('should refresh content when resume prop changes while open', async () => {

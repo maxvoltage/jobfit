@@ -55,8 +55,8 @@ describe('Dashboard Page', () => {
         localStorage.clear();
         queryClient.clear();
         vi.mocked(api.getApplications).mockResolvedValue(mockApplications as unknown as JobApplication[]);
-        vi.mocked(api.getSelectedResume).mockResolvedValue({ id: 1, name: 'First Resume', is_selected: true } as unknown as Resume);
-        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'First Resume', content: '...', is_selected: true } as unknown as Resume]);
+        vi.mocked(api.getSelectedResume).mockResolvedValue({ id: 1, name: 'First Resume', isSelected: true } as unknown as Resume);
+        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'First Resume', content: '...', isSelected: true } as unknown as Resume]);
     });
 
 

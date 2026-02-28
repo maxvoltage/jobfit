@@ -33,7 +33,7 @@ export default function NewApplication() {
 
   useEffect(() => {
     if (resumes.length > 0 && !selectedResumeId) {
-      const selected = resumes.find(r => r.is_selected) || resumes[0];
+      const selected = resumes.find(r => r.isSelected) || resumes[0];
       setSelectedResumeId(selected.id.toString());
     }
   }, [resumes, selectedResumeId]);

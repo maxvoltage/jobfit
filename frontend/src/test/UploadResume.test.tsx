@@ -68,7 +68,7 @@ describe('UploadResume', () => {
                 id: 1,
                 name: 'Test Resume',
                 content: 'Imported content',
-                is_selected: true
+                isSelected: true
             });
 
             render(
@@ -109,7 +109,7 @@ describe('UploadResume', () => {
                 id: 2,
                 name: 'Pasted Resume',
                 content: 'Cleaned content',
-                is_selected: true
+                isSelected: true
             });
 
             render(

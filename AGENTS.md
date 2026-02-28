@@ -60,7 +60,18 @@ Build a local-first AI agent that helps users tailor their resumes to specific j
 - **Logic:** Render `Job.resume` to PDF using Jinja2 + WeasyPrint.
 - **Output:** File download.
 
-## 4. Engineering Standards
+## 4. Case Usage & Naming Conventions
+
+### Standards
+- **Backend (Python):** Use `snake_case` for variables, function names, and Pydantic model fields (PEP 8).
+- **Frontend (TypeScript/React):** Use `camelCase` for variables, interface properties, and component props.
+
+### API Data Mapping
+1. **Backend Output:** Return data in `snake_case` (e.g., `cover_letter`, `match_score`).
+2. **Frontend Consumption:** The API client (`api.ts`) MUST map `snake_case` response fields to `camelCase` for internal use.
+3. **Internal Consistency:** Do NOT leak `snake_case` into UI components or frontend state.
+
+## 5. Engineering Standards
 
 ### Testing
 - **Patterns:**

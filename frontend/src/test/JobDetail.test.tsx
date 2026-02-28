@@ -60,7 +60,7 @@ describe('JobDetail Page', () => {
         vi.clearAllMocks();
         queryClient.clear();
         vi.mocked(api.getApplication).mockResolvedValue(mockJob as unknown as JobApplication);
-        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'Active Resume', content: 'Resume Content', is_selected: true }]);
+        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'Active Resume', content: 'Resume Content', isSelected: true }]);
     });
 
     it('should load and display job details', async () => {

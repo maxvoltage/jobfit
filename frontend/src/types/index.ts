@@ -26,6 +26,6 @@ export interface Resume {
   id: number;
   name: string;
   content: string;
-  is_selected: boolean;
+  isSelected: boolean;
 }
 export type FilterType = 'all' | 'high' | 'medium' | 'applied' | 'tbd';

@@ -38,9 +38,9 @@ import * as api from '@/lib/api';
 
 describe('ResumeSelector Component', () => {
     const mockResumes: Resume[] = [
-        { id: 1, name: 'First Resume', content: 'Content 1', is_selected: false },
-        { id: 2, name: 'Active Resume', content: 'Content 2', is_selected: true },
-        { id: 3, name: 'Third Resume', content: 'Content 3', is_selected: false },
+        { id: 1, name: 'First Resume', content: 'Content 1', isSelected: false },
+        { id: 2, name: 'Active Resume', content: 'Content 2', isSelected: true },
+        { id: 3, name: 'Third Resume', content: 'Content 3', isSelected: false },
     ];
 
     it('should initially preview the selected resume when opened', async () => {

@@ -51,7 +51,7 @@ export function ResumeEditor({
                 body: JSON.stringify({
                     name: resume.name,
                     content: editedContent,
-                    is_selected: resume.is_selected,
+                    is_selected: resume.isSelected,
                 }),
             });
 

@@ -64,7 +64,7 @@ export default function JobDetail() {
     queryFn: getResumes,
   });
 
-  const activeResume = resumes.find(r => r.is_selected) || resumes[0];
+  const activeResume = resumes.find(r => r.isSelected) || resumes[0];
 
   // Mutations
   const updateMutation = useMutation({

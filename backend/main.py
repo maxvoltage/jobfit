@@ -116,8 +116,8 @@ class JobResponse(BaseModel):
 
 class RegenerateResponse(BaseModel):
     resume: str
-    coverLetter: str | None = None
-    matchScore: int | None = None
+    cover_letter: str | None = None
+    match_score: int | None = None
 
 
 @app.get("/api/health")
@@ -994,8 +994,8 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
 
             return {
                 "resume": job.resume,
-                "coverLetter": job.cover_letter,
-                "matchScore": job.match_score,
+                "cover_letter": job.cover_letter,
+                "match_score": job.match_score,
             }
         else:
             log_error("extract_agent_data returned None or empty result")

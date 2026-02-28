@@ -38,7 +38,7 @@ export function ResumeSelector({
     const queryClient = useQueryClient();
     const { toast } = useToast();
     // Find the currently selected resume or use the provided selectedResumeId
-    const selectedResume = resumes.find(r => r.is_selected);
+    const selectedResume = resumes.find(r => r.isSelected);
     const initialPreviewId = selectedResume ? selectedResume.id.toString() : selectedResumeId;
 
     const [previewResumeId, setPreviewResumeId] = useState<string>(initialPreviewId);
@@ -71,7 +71,7 @@ export function ResumeSelector({
     // Reset preview to the selected resume only when the modal is FIRST opened
     useEffect(() => {
         if (open) {
-            const currentSelected = resumes.find(r => r.is_selected) || resumes[0];
+            const currentSelected = resumes.find(r => r.isSelected) || resumes[0];
             if (currentSelected) {
                 setPreviewResumeId(currentSelected.id.toString());
             }
@@ -166,7 +166,7 @@ export function ResumeSelector({
                                                             {resume.name}
                                                         </span>
                                                     </div>
-                                                    {resume.is_selected && (
+                                                    {resume.isSelected && (
                                                         <span className="text-xs text-primary mt-1 inline-block">
                                                             Currently Selected
                                                         </span>
@@ -204,7 +204,7 @@ export function ResumeSelector({
                                     <div className="mb-4 flex items-center justify-between">
                                         <div>
                                             <h3 className="text-lg font-semibold">{previewResume.name}</h3>
-                                            {previewResume.is_selected && (
+                                            {previewResume.isSelected && (
                                                 <p className="text-sm text-muted-foreground">Currently Selected</p>
                                             )}
                                         </div>

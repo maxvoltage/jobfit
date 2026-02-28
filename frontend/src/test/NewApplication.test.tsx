@@ -41,7 +41,7 @@ describe('NewApplication Auto-save and Redirect', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         queryClient.clear();
-        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'Resume 1', content: 'Mock content', is_selected: true }]);
+        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'Resume 1', content: 'Mock content', isSelected: true }]);
     });
 
     it('should analyze manual entry and redirect immediately', async () => {
@@ -52,7 +52,7 @@ describe('NewApplication Auto-save and Redirect', () => {
             jobTitle: 'Backend Developer',
             matchScore: 90,
             resume: '<html>Content</html>',
-            cover_letter: '<html>Letter</html>'
+            coverLetter: '<html>Letter</html>'
         };
 
         vi.mocked(api.analyzeJobDescription).mockResolvedValue(mockResult as unknown as (api.AnalyzeJobResponse & { id: string }));
@@ -127,9 +127,9 @@ describe('NewApplication Auto-save and Redirect', () => {
 
     it('should default to selected resume even if it is not the first one', async () => {
         const resumes = [
-            { id: 1, name: 'Old CV', content: 'Old content', is_selected: false },
-            { id: 2, name: 'Latest Selected CV', content: 'Selected content', is_selected: true },
-            { id: 3, name: 'Draft CV', content: 'Draft content', is_selected: false }
+            { id: 1, name: 'Old CV', content: 'Old content', isSelected: false },
+            { id: 2, name: 'Latest Selected CV', content: 'Selected content', isSelected: true },
+            { id: 3, name: 'Draft CV', content: 'Draft content', isSelected: false }
         ];
         vi.mocked(api.getResumes).mockResolvedValue(resumes);
 

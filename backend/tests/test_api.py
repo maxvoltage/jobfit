@@ -446,8 +446,8 @@ class TestRegenerateJob:
             data = response.json()
             # In our current regeneration logic, we focus on the cover letter
             # The resume stays as its original (un-tailored) self from the job record
-            assert data["coverLetter"] == "<p>Updated Cover letter</p>"
-            assert data["matchScore"] == 95
+            assert data["cover_letter"] == "<p>Updated Cover letter</p>"
+            assert data["match_score"] == 95
             assert data["resume"] == sample_job.resume
 
     @pytest.mark.asyncio

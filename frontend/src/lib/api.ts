@@ -149,7 +149,12 @@ export async function regenerateContent(id: string, prompt?: string, resumeId?: 
     throw new Error(error.detail || 'Failed to regenerate content');
   }
 
-  return await response.json();
+  const data = await response.json();
+  return {
+    resume: data.resume,
+    coverLetter: data.cover_letter,
+    matchScore: data.match_score,
+  };
 }
 
 export async function uploadResume(file: File, name?: string): Promise<Resume> {
@@ -172,7 +177,7 @@ export async function uploadResume(file: File, name?: string): Promise<Resume> {
     id: data.id,
     name: data.name,
     content: data.preview, // We use preview in the UI
-    is_selected: data.is_selected,
+    isSelected: data.is_selected,
   };
 }
 
@@ -193,7 +198,7 @@ export async function importResumeFromUrl(url: string, name?: string): Promise<R
     id: data.id,
     name: data.name,
     content: data.preview,
-    is_selected: data.is_selected,
+    isSelected: data.is_selected,
   };
 }
 
@@ -222,7 +227,7 @@ export async function addResumeManual(content: string, name?: string): Promise<R
     id: data.id,
     name: data.name,
     content: data.preview,
-    is_selected: data.is_selected,
+    isSelected: data.is_selected,
   };
 }
 
@@ -234,14 +239,14 @@ export async function getResumes(): Promise<Resume[]> {
     id: r.id,
     name: r.name,
     content: r.preview || '',
-    is_selected: r.is_selected,
+    isSelected: r.is_selected,
   }));
 }
 
 
 export async function getSelectedResume(): Promise<Resume | undefined> {
   const resumes = await getResumes();
-  return resumes.find(r => r.is_selected) || resumes[0];
+  return resumes.find(r => r.isSelected) || resumes[0];
 }
 
 export function downloadJobPdf(jobId: string, type: 'resume' | 'cover' = 'resume') {
