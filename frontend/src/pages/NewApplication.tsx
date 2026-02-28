@@ -50,7 +50,7 @@ export default function NewApplication() {
 
     setIsAnalyzing(true);
     try {
-      const result = await analyzeJobUrl(jobUrl, parseInt(selectedResumeId), generateCv);
+      const result = await analyzeJobUrl(jobUrl, generateCv ? parseInt(selectedResumeId) : undefined, generateCv);
 
       // Invalidate applications query so dashboard refreshes
       queryClient.invalidateQueries({ queryKey: ['applications'] });
@@ -86,7 +86,7 @@ export default function NewApplication() {
 
     setIsAnalyzing(true);
     try {
-      const result = await analyzeJobDescription(manualDescription, parseInt(selectedResumeId), generateCv);
+      const result = await analyzeJobDescription(manualDescription, generateCv ? parseInt(selectedResumeId) : undefined, generateCv);
 
       // Invalidate applications query so dashboard refreshes
       queryClient.invalidateQueries({ queryKey: ['applications'] });

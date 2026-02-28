@@ -71,7 +71,7 @@ app.middleware("http")(log_requests_middleware)
 class AnalyzeJobRequest(BaseModel):
     url: str | None = None
     description: str | None = None
-    resume_id: int
+    resume_id: int | None = None
     generate_cv: bool = True
 
 
@@ -108,13 +108,16 @@ class JobResponse(BaseModel):
     title: str
     match_score: int | None = None
     status: str
+    job_description: str | None = None
     resume: str | None = None
     cover_letter: str | None = None
     created_at: datetime
 
 
-class RegenerateRequest(BaseModel):
-    prompt: str | None = None
+class RegenerateResponse(BaseModel):
+    resume: str
+    coverLetter: str | None = None
+    matchScore: int | None = None
 
 
 @app.get("/api/health")
@@ -571,10 +574,18 @@ def minify_text(text: str) -> str:
 async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db)):
     """Analyze a job posting and match the resume."""
 
-    # Load resume from database
-    resume = db.query(models.Resume).filter(models.Resume.id == request.resume_id).first()
-    if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+    # Load resume from database if provided
+    resume = None
+    if request.resume_id is not None:
+        resume = db.query(models.Resume).filter(models.Resume.id == request.resume_id).first()
+        if not resume:
+            raise HTTPException(status_code=404, detail="Resume not found")
+
+    if request.generate_cv and not resume:
+        raise HTTPException(
+            status_code=400,
+            detail="A resume must be selected to generate a CV and matching score.",
+        )
 
     # Run the AI agent
     try:
@@ -629,12 +640,12 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
 
         # Create new job application record
         job = models.Job(
-            resume_id=request.resume_id,
+            resume_id=resume.id if resume else None,
             url=request.url,
             company=company,
             title=title,
-            original_jd=getattr(data, "extracted_job_description", request.description or ""),
-            resume=resume.content,  # Save the original resume content as-is
+            job_description=getattr(data, "extracted_job_description", request.description or ""),
+            resume=resume.content if resume else "",  # Save the original resume content as-is
             cover_letter=getattr(data, "cover_letter_html", ""),
             match_score=match_score,
             status=models.JobStatus.todo,
@@ -669,7 +680,7 @@ async def get_jobs(db: Session = Depends(get_db)):
     return jobs
 
 
-@app.get("/api/jobs/{job_id}")
+@app.get("/api/jobs/{job_id}", response_model=JobResponse)
 async def get_job(job_id: int, db: Session = Depends(get_db)):
     """Get a specific job application."""
     job = db.query(models.Job).filter(models.Job.id == job_id).first()
@@ -685,7 +696,7 @@ class UpdateJobRequest(BaseModel):
     cover_letter: str | None = None
 
 
-@app.patch("/api/jobs/{job_id}")
+@app.patch("/api/jobs/{job_id}", response_model=JobResponse)
 async def update_job(job_id: int, request: UpdateJobRequest, db: Session = Depends(get_db)):
     """Update a job application."""
     job = db.query(models.Job).filter(models.Job.id == job_id).first()
@@ -894,24 +905,52 @@ async def delete_job(job_id: int, db: Session = Depends(get_db)):
     return {"message": "Job deleted successfully"}
 
 
-@app.post("/api/jobs/{job_id}/regenerate")
+class RegenerateRequest(BaseModel):
+    prompt: str | None = None
+    resume_id: int | None = None
+
+
+@app.post("/api/jobs/{job_id}/regenerate", response_model=RegenerateResponse)
 async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Session = Depends(get_db)):
     """Regenerate resume and cover letter with optional user prompt."""
     job = db.query(models.Job).filter(models.Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # Ensure the job has a source resume linked
-    if not job.source_resume:
-        raise HTTPException(status_code=404, detail="Original resume not found")
+    # Ensure the job has a source resume linked, or link it now if resume_id provided
+    target_resume_id = request.resume_id
+
+    if target_resume_id:
+        source_resume = db.query(models.Resume).filter(models.Resume.id == target_resume_id).first()
+        if not source_resume:
+            raise HTTPException(status_code=404, detail="Requested resume not found")
+        # Update the linked resume if it changed or if it was not set
+        if job.resume_id != source_resume.id:
+            job.resume_id = source_resume.id
+            # Note: Update job.resume to the new source resume's content
+            # so the regeneration context is based on the explicitly selected new resume
+            job.resume = source_resume.content
+            db.flush()
+    else:
+        source_resume = job.source_resume
+        if not source_resume:
+            # Fallback to selected resume
+            selected = db.query(models.Resume).filter(models.Resume.is_selected).first()
+            if not selected:
+                selected = db.query(models.Resume).first()
+            if not selected:
+                raise HTTPException(status_code=404, detail="No resumes found to link with this job")
+            source_resume = selected
+            job.resume_id = source_resume.id
+            db.flush()
 
     # Run the AI agent
     try:
         # Prepare regeneration prompt
-        compressed_resume = minify_text(job.source_resume.content)
+        compressed_resume = minify_text(source_resume.content)
         prompt = get_regeneration_prompt(
             resume_content=compressed_resume,
-            job_description=job.original_jd,
+            job_description=job.job_description,
             current_cover=job.cover_letter,
             user_request=request.prompt or "Update the cover letter as requested.",
             company=job.company,
@@ -938,7 +977,7 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
             # Fix: Ensure resume is restored to original content if previously empty
             # Also ensures it's in Markdown format for the new UI
             if not job.resume or job.resume.strip() == "":
-                job.resume = job.source_resume.content
+                job.resume = source_resume.content
 
             db.commit()
             db.refresh(job)
@@ -953,7 +992,11 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
             }
             log_ai_interaction("REGENERATE RESPONSE", json.dumps(response_preview, indent=2), "green", format="json")
 
-            return {"resume": job.resume, "coverLetter": job.cover_letter, "matchScore": job.match_score}
+            return {
+                "resume": job.resume,
+                "coverLetter": job.cover_letter,
+                "matchScore": job.match_score,
+            }
         else:
             log_error("extract_agent_data returned None or empty result")
             raise HTTPException(status_code=500, detail="Failed to get data from agent")

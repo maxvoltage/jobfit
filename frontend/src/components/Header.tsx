@@ -22,11 +22,11 @@ export function Header() {
 
               <Button
                 asChild
-                variant={location.pathname === '/upload' ? 'secondary' : 'outline'}
+                variant="secondary"
                 size="sm"
                 className={cn(
-                  'gap-2',
-                  location.pathname === '/upload' && 'bg-secondary text-foreground'
+                  'gap-2 border border-primary/20 transition-all font-semibold',
+                  location.pathname === '/upload' ? 'bg-primary/20 text-foreground' : 'bg-primary/5 text-muted-foreground'
                 )}
               >
                 <Link to="/upload">
@@ -36,11 +36,11 @@ export function Header() {
               </Button>
               <Button
                 asChild
-                variant={location.pathname === '/new' ? 'secondary' : 'ghost'}
+                variant="secondary"
                 size="sm"
                 className={cn(
-                  'gap-2',
-                  location.pathname === '/new' && 'bg-secondary text-foreground'
+                  'gap-2 border border-primary/20 transition-all font-semibold',
+                  location.pathname === '/new' ? 'bg-primary/20 text-foreground' : 'bg-primary/5 text-muted-foreground'
                 )}
               >
                 <Link to="/new">

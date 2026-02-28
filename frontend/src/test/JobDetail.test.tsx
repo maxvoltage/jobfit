@@ -5,6 +5,7 @@ import JobDetail from '../pages/JobDetail';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as api from '../lib/api';
+import { JobApplication } from '../types';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -21,6 +22,8 @@ vi.mock('../lib/api', () => ({
     regenerateContent: vi.fn(),
     downloadJobPdf: vi.fn(),
     downloadJobDocx: vi.fn(),
+    getResumes: vi.fn(),
+    deleteApplication: vi.fn(),
 }));
 
 vi.mock('../hooks/use-toast', () => ({
@@ -57,6 +60,7 @@ describe('JobDetail Page', () => {
         vi.clearAllMocks();
         queryClient.clear();
         vi.mocked(api.getApplication).mockResolvedValue(mockJob as unknown as JobApplication);
+        vi.mocked(api.getResumes).mockResolvedValue([{ id: 1, name: 'Active Resume', content: 'Resume Content', is_selected: true }]);
     });
 
     it('should load and display job details', async () => {
@@ -207,7 +211,7 @@ describe('JobDetail Page', () => {
 
         await user.click(startButton);
 
-        expect(api.regenerateContent).toHaveBeenCalledWith('1', 'Better resume please');
+        expect(api.regenerateContent).toHaveBeenCalledWith('1', 'Better resume please', 1);
 
         await waitFor(() => {
             expect(screen.getByText('95%')).toBeInTheDocument();
@@ -371,8 +375,8 @@ describe('JobDetail Page', () => {
 
         await waitFor(() => screen.getByText('Test Company'));
 
-        // Check if "Generate Analysis" button exists instead of "Regenerate"
-        expect(screen.getByRole('button', { name: /generate analysis/i })).toBeInTheDocument();
+        // Check if "Generate Score & CV" button exists instead of "Regenerate"
+        expect(screen.getByRole('button', { name: /generate score & cv/i })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /^regenerate$/i })).not.toBeInTheDocument();
 
         // Switch to cover letter tab

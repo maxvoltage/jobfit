@@ -39,7 +39,7 @@ class Job(Base):
     url: Mapped[Optional[str]]
     company: Mapped[str]
     title: Mapped[str]
-    original_jd: Mapped[str]
+    job_description: Mapped[str]
     resume: Mapped[str]
     cover_letter: Mapped[Optional[str]]
     match_score: Mapped[Optional[int]]

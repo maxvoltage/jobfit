@@ -152,7 +152,7 @@ def sample_job(db_session: Session, sample_resume):
         url="https://example.com/job",
         company="Test Company",
         title="Software Engineer",
-        original_jd="Job description here",
+        job_description="Job description here",
         resume="<h1>Resume</h1>",
         cover_letter="<p>Cover Letter Content</p>",
         match_score=85,

@@ -141,7 +141,7 @@ backend/
 - `url`: Job posting URL
 - `company`: Company name
 - `title`: Job title
-- `original_jd`: Original job description
+- `job_description`: Original job description
 - `resume`: AI-resume HTML
 - `match_score`: Match score (0-100)
 - `status`: Application status (todo/applied/interview)

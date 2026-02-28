@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, RefreshCw, Building2, Loader2, Edit2, Save, X, Trash2, FileDown } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Building2, Loader2, Edit2, Save, X, Trash2, FileDown, FileText, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { MatchScoreBadge } from '@/components/MatchScoreBadge';
-import { getApplication, regenerateContent, updateApplication, downloadJobPdf, downloadJobDocx, deleteApplication } from '@/lib/api';
+import { getApplication, regenerateContent, updateApplication, downloadJobPdf, downloadJobDocx, deleteApplication, getResumes } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { RichTextEditor } from '@/components/RichTextEditor';
+import { ResumeSelector } from '@/components/ResumeSelector';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,7 @@ export default function JobDetail() {
   const [activeTab, setActiveTab] = useState('resume');
   const [regenPrompt, setRegenPrompt] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isResumeSelectorOpen, setIsResumeSelectorOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedResume, setEditedResume] = useState('');
   const [editedCover, setEditedCover] = useState('');
@@ -56,6 +58,13 @@ export default function JobDetail() {
     enabled: !!id,
     retry: false,
   });
+
+  const { data: resumes = [] } = useQuery({
+    queryKey: ['resumes'],
+    queryFn: getResumes,
+  });
+
+  const activeResume = resumes.find(r => r.is_selected) || resumes[0];
 
   // Mutations
   const updateMutation = useMutation({
@@ -86,7 +95,7 @@ export default function JobDetail() {
   });
 
   const regenerateMutation = useMutation({
-    mutationFn: () => regenerateContent(id!, regenPrompt),
+    mutationFn: () => regenerateContent(id!, regenPrompt, activeResume?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['application', id] });
       queryClient.invalidateQueries({ queryKey: ['applications'] });
@@ -254,7 +263,8 @@ export default function JobDetail() {
                   <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                       <Button
-                        variant="outline"
+                        variant="secondary"
+                        className="bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all font-semibold"
                         disabled={regenerateMutation.isPending}
                       >
                         {regenerateMutation.isPending ? (
@@ -262,7 +272,7 @@ export default function JobDetail() {
                         ) : (
                           <RefreshCw className="mr-2 h-4 w-4" />
                         )}
-                        {application.matchScore === null ? "Generate Analysis" : "Regenerate"}
+                        {application.matchScore === null ? "Generate Score & CV" : "Regenerate"}
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md">
@@ -292,21 +302,36 @@ export default function JobDetail() {
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
-                  <Button variant="outline" onClick={handleStartEdit}>
+                  <Button
+                    variant="secondary"
+                    className="bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all font-semibold"
+                    onClick={handleStartEdit}
+                  >
                     <Edit2 className="mr-2 h-4 w-4" />
                     Edit Text
                   </Button>
-                  <Button variant="outline" onClick={handleDownloadPdf}>
+                  <Button
+                    variant="secondary"
+                    className="bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all font-semibold"
+                    onClick={handleDownloadPdf}
+                  >
                     <Download className="mr-2 h-4 w-4" />
                     PDF
                   </Button>
-                  <Button variant="outline" onClick={handleDownloadDocx}>
+                  <Button
+                    variant="secondary"
+                    className="bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all font-semibold"
+                    onClick={handleDownloadDocx}
+                  >
                     <FileDown className="mr-2 h-4 w-4" />
                     Word
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+                      <Button
+                        variant="secondary"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive border border-destructive/20 transition-all font-semibold"
+                      >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
                       </Button>
@@ -378,12 +403,49 @@ export default function JobDetail() {
                     content={editedResume}
                     onChange={setEditedResume}
                   />
-                ) : application.resume ? (
+                ) : application.resume && application.resume.trim() !== "" ? (
                   <div className="markdown-preview">
                     <MarkdownPreview content={application.resume} />
                   </div>
+                ) : !application.resumeId && activeResume ? (
+                  <div className="space-y-4">
+                    <div className="bg-primary/5 border border-primary/10 rounded-xl p-2 pl-4 text-xs flex items-center justify-between text-primary animate-in fade-in slide-in-from-top-2 duration-500">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-primary/5 p-2.5 rounded-lg opacity-80">
+                          <AlertCircle className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold tracking-tight">Job description unmatched</p>
+                          <p className="opacity-95 text-[11px] mt-0.5">Generate score & CV to match job description</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-px bg-primary/20 mx-1 hidden sm:block" />
+                        <Button
+                          variant="secondary"
+                          className="h-auto py-1 px-3 flex items-center gap-2.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded-xl transition-all shadow-sm group"
+                          onClick={() => setIsResumeSelectorOpen(true)}
+                        >
+                          <div className="flex flex-col items-start gap-0">
+                            <span className="text-[9px] font-bold uppercase tracking-wider opacity-60">Selected Resume</span>
+                            <span className="text-sm font-bold">{activeResume.name}</span>
+                          </div>
+                          <div className="bg-primary/20 p-1.5 rounded-lg group-hover:bg-primary/30 transition-colors">
+                            <FileText className="h-3.5 w-3.5" />
+                          </div>
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="markdown-preview opacity-60 grayscale-[0.2]">
+                      <MarkdownPreview content={activeResume.content} />
+                    </div>
+                  </div>
                 ) : (
-                  <EmptyState message="No resume generated yet" />
+                  <EmptyState
+                    message="No resume linked yet"
+                    description="Upload a resume or select one from the sidebar to see it matched here."
+                  />
                 )}
               </div>
             </TabsContent>
@@ -408,7 +470,8 @@ export default function JobDetail() {
                     <Button
                       onClick={() => regenerateMutation.mutate()}
                       disabled={regenerateMutation.isPending}
-                      className="gap-2"
+                      variant="secondary"
+                      className="gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all font-semibold py-6 px-8 rounded-xl"
                     >
                       {regenerateMutation.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -424,6 +487,20 @@ export default function JobDetail() {
           </Tabs>
         </div>
       </div>
+
+      <ResumeSelector
+        open={isResumeSelectorOpen}
+        onOpenChange={setIsResumeSelectorOpen}
+        resumes={resumes}
+        selectedResumeId={activeResume?.id.toString() || ''}
+        onSelectResume={() => {
+          queryClient.invalidateQueries({ queryKey: ['resumes'] });
+          toast({
+            title: "Resume Swapped",
+            description: `Now using ${activeResume?.name} for preview.`,
+          });
+        }}
+      />
     </div>
   );
 }

@@ -152,10 +152,10 @@ export default function Dashboard() {
             <span className="text-sm font-medium text-muted-foreground">Currently Selected Resume:</span>
             {resumes.length > 0 ? (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={() => setIsResumeSelectorOpen(true)}
-                className="h-8 py-0 px-2 font-normal text-xs"
+                className="h-8 py-0 px-2 font-semibold text-xs bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all"
               >
                 <FileText className="mr-1.5 h-3.5 w-3.5" />
                 {selectedResume ? selectedResume.name : 'Select a resume'}

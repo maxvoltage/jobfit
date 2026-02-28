@@ -10,6 +10,7 @@ export interface JobApplication {
   coverLetter?: string;
   status: 'pending' | 'analyzed' | 'applied' | 'interview' | 'rejected';
   applied: boolean;
+  resumeId?: number;
 }
 
 export interface AnalyzeJobResponse {

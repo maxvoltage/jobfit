@@ -210,28 +210,28 @@ export function ResumeSelector({
                                         </div>
                                         <div className="flex gap-2">
                                             <Button
-                                                variant="outline"
+                                                variant="secondary"
                                                 size="sm"
                                                 onClick={handlePrint}
-                                                className="gap-2"
+                                                className="gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all font-semibold"
                                             >
                                                 <Printer className="h-3 w-3" />
                                                 PDF
                                             </Button>
                                             <Button
-                                                variant="outline"
+                                                variant="secondary"
                                                 size="sm"
                                                 onClick={handleDownloadWord}
-                                                className="gap-2"
+                                                className="gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all font-semibold"
                                             >
                                                 <FileDown className="h-3 w-3" />
                                                 Word
                                             </Button>
                                             <Button
-                                                variant="outline"
+                                                variant="secondary"
                                                 size="sm"
                                                 onClick={() => setIsEditorOpen(true)}
-                                                className="gap-2"
+                                                className="gap-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all font-semibold"
                                             >
                                                 <Edit2 className="h-3 w-3" />
                                                 Edit
@@ -267,8 +267,10 @@ export function ResumeSelector({
                                             Cancel
                                         </Button>
                                         <Button
+                                            variant="secondary"
                                             onClick={handleSelect}
                                             disabled={!previewResumeId}
+                                            className="bg-primary/20 hover:bg-primary/30 border border-primary/30 transition-all font-semibold"
                                         >
                                             {selectedResumeId === previewResumeId ? 'Keep Selection' : 'Use This Resume'}
                                         </Button>

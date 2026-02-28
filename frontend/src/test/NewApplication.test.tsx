@@ -89,7 +89,7 @@ describe('NewApplication Auto-save and Redirect', () => {
 
         // Wait for analysis and redirect
         await waitFor(() => {
-            expect(api.analyzeJobDescription).toHaveBeenCalledWith('Awesome job description', 1, false);
+            expect(api.analyzeJobDescription).toHaveBeenCalledWith('Awesome job description', undefined, false);
             expect(mockNavigate).toHaveBeenCalledWith('/job/123');
         });
     });

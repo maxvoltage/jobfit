@@ -379,7 +379,7 @@ class TestGeneratePDF:
             url="https://example.com/job",
             company="Test Company",
             title="Engineer",
-            original_jd="JD",
+            job_description="JD",
             resume="",  # Empty content
             cover_letter="",
             match_score=90,
@@ -551,7 +551,7 @@ class TestUpdateJob:
             url="https://example.com/job",
             company="Test Company",
             title="Engineer",
-            original_jd="JD",
+            job_description="JD",
             resume="HTML",
             cover_letter="HTML",
             match_score=90,
@@ -670,7 +670,7 @@ class TestDOCXGeneration:
             url="https://example.com/job",
             company="Empty Co",
             title="Ghost",
-            original_jd="JD",
+            job_description="JD",
             resume="",  # Empty
             cover_letter=None,
             match_score=0,

@@ -9,10 +9,11 @@ interface BackendJob {
   title: string;
   match_score: number;
   url: string;
-  original_jd: string;
+  job_description: string;
   resume: string;
   cover_letter: string;
   status: string;
+  resume_id?: number;
 }
 
 // Helper to normalize backend Job to frontend JobApplication
@@ -23,11 +24,12 @@ const normalizeJob = (job: BackendJob): JobApplication => ({
   jobTitle: job.title,
   matchScore: job.match_score,
   jobUrl: job.url,
-  jobDescription: job.original_jd || '',
+  jobDescription: job.job_description || '',
   resume: job.resume,
   coverLetter: job.cover_letter,
   status: job.status as JobApplication['status'],
   applied: job.status === 'applied',
+  resumeId: job.resume_id,
 });
 
 
@@ -75,7 +77,7 @@ export async function updateApplication(id: string, updates: Partial<JobApplicat
   return normalizeJob(data);
 }
 
-export async function analyzeJobUrl(url: string, resumeId: number, generateCv: boolean = true): Promise<AnalyzeJobResponse & { id: string }> {
+export async function analyzeJobUrl(url: string, resumeId?: number, generateCv: boolean = true): Promise<AnalyzeJobResponse & { id: string }> {
   const response = await fetch(`${API_BASE_URL}/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -99,7 +101,7 @@ export async function analyzeJobUrl(url: string, resumeId: number, generateCv: b
   };
 }
 
-export async function analyzeJobDescription(description: string, resumeId: number, generateCv: boolean = true): Promise<AnalyzeJobResponse & { id: string }> {
+export async function analyzeJobDescription(description: string, resumeId?: number, generateCv: boolean = true): Promise<AnalyzeJobResponse & { id: string }> {
   const response = await fetch(`${API_BASE_URL}/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -135,11 +137,11 @@ export async function deleteApplication(id: string): Promise<void> {
   if (!response.ok) throw new Error('Failed to delete application');
 }
 
-export async function regenerateContent(id: string, prompt?: string): Promise<{ resume: string; coverLetter: string; matchScore?: number }> {
+export async function regenerateContent(id: string, prompt?: string, resumeId?: number): Promise<{ resume: string; coverLetter: string; matchScore?: number }> {
   const response = await fetch(`${API_BASE_URL}/jobs/${id}/regenerate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, resume_id: resumeId }),
   });
 
   if (!response.ok) {
