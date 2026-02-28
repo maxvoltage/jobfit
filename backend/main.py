@@ -97,6 +97,7 @@ class JobResponse(BaseModel):
     title: str
     match_score: int
     status: str
+    resume: str | None = None
     cover_letter: str | None = None
     created_at: datetime
 
@@ -546,9 +547,17 @@ async def generate_resume_docx(resume_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Word document generation failed: {str(e)}")
 
 
+def minify_text(text: str) -> str:
+    """Compress text for AI by removing excessive whitespace."""
+    if not text:
+        return ""
+    import re
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
 @app.post("/api/analyze")
 async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db)):
-    """Analyze a job posting and tailor the resume."""
+    """Analyze a job posting and match the resume."""
 
     # Load resume from database
     resume = db.query(models.Resume).filter(models.Resume.id == request.resume_id).first()
@@ -557,16 +566,17 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
 
     # Run the AI agent
     try:
+        compressed_resume = minify_text(resume.content)
         if request.description:
             prompt = get_initial_matching_prompt(
-                resume_content=resume.content, job_source="the provided text", job_content=request.description
+                resume_content=compressed_resume, job_source="the provided text", job_content=request.description
             )
             log_ai_interaction("AI REQUEST (MANUAL)", prompt, "blue")
 
             # Use no-tools agent for manual entry to avoid tool call errors
             result = await resume_agent_no_tools.run(prompt)
         else:
-            prompt = get_initial_matching_prompt(resume.content, request.url)
+            prompt = get_initial_matching_prompt(compressed_resume, request.url)
             log_ai_interaction("AI REQUEST (URL)", prompt, "blue")
 
             result = await resume_agent.run(prompt)
@@ -574,25 +584,11 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
         # Robust data extraction
         data = extract_agent_data(result)
 
-        # Log response nicely
-        import json
-
         # Log response nicely with more detail
-        # Safe stringification of values to handle MagicMocks in tests
-        response_preview = {
-            "company": str(getattr(data, "company_name", "N/A")),
-            "title": str(getattr(data, "job_title", "N/A")),
-            "score": str(getattr(data, "match_score", 0)),
-            "improvements": [str(i) for i in getattr(data, "key_improvements", [])],
-            "extracted_jd": str(getattr(data, "extracted_job_description", "")),
-            "resume_html": str(getattr(data, "resume_html", "")),
-            "cover_letter_html": str(getattr(data, "cover_letter_html", "")),
-        }
-        log_ai_interaction("AI RESPONSE", json.dumps(response_preview, indent=2), "green", format="json")
+        log_ai_interaction("AI RESPONSE", str(data), "green")
 
-        # Save to Job table
         company = getattr(data, "company_name", "Unknown Company")
-        title = getattr(data, "job_title", "Job Title")
+        title = getattr(data, "job_title", "Unknown Title")
         match_score = getattr(data, "match_score", 0)
         extracted_jd = getattr(data, "extracted_job_description", "")
 
@@ -607,19 +603,14 @@ async def analyze_job(request: AnalyzeJobRequest, db: Session = Depends(get_db))
                 ),
             )
 
-        # Fallback if AI didn't return them
-        if company == "Unknown Company":
-            improvements = getattr(data, "key_improvements", [])
-            if improvements and len(improvements) > 0:
-                company = improvements[0]
-
+        # Create new job application record
         job = models.Job(
             resume_id=request.resume_id,
             url=request.url,
             company=company,
             title=title,
             original_jd=getattr(data, "extracted_job_description", request.description or ""),
-            resume=getattr(data, "resume_html", ""),
+            resume=resume.content,  # Save the original resume content as-is
             cover_letter=getattr(data, "cover_letter_html", ""),
             match_score=match_score,
             status=models.JobStatus.todo,
@@ -713,7 +704,37 @@ async def generate_pdf(
         html_content = job.cover_letter
         log_debug(f"Generating PDF for cover letter (Job ID: {job_id})")
     else:
-        html_content = job.resume
+        # Check if it's HTML or Markdown
+        is_html = job.resume.strip().startswith(("<!DOCTYPE html>", "<html"))
+        if is_html:
+            html_content = job.resume
+        else:
+            # Convert Markdown to styled HTML
+            import markdown
+            body_html = markdown.markdown(job.resume, extensions=["extra", "nl2br", "sane_lists", "smarty"])
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    @page {{ size: A4; margin: 2cm; }}
+                    body {{ font-family: 'Georgia', serif; font-size: 11pt; line-height: 1.5; color: #333; }}
+                    h1, h2, h3, p, ul {{ margin: 0; }}
+                    h1 {{ font-size: 24pt; margin-bottom: 0.2em; color: #1a1a1a; }}
+                    h2 {{ font-size: 14pt; margin-top: 1.2em; margin-bottom: 0.4em; border-bottom: 1px solid #ccc;
+                        padding-bottom: 0.1em; }}
+                    h3 {{ font-size: 12pt; margin-top: 1em; margin-bottom: 0.05em; }}
+                    p {{ margin-bottom: 0.6em; }}
+                    ul {{ margin-top: 0.2em; margin-bottom: 0.8em; padding-left: 1.5em; list-style-type: disc; }}
+                    li {{ margin-bottom: 0.3em; }}
+                </style>
+            </head>
+            <body>
+                {body_html}
+            </body>
+            </html>
+            """
         log_debug(f"Generating PDF for resume (Job ID: {job_id})")
 
     if not html_content:
@@ -759,10 +780,18 @@ async def generate_job_docx(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # Get the HTML content
-    html_content = job.cover_letter if type == "cover" else job.resume
-    if not html_content:
+    # Get the source content
+    source_content = job.cover_letter if type == "cover" else job.resume
+    if not source_content:
         raise HTTPException(status_code=400, detail=f"No {type} content available for Word generation")
+
+    is_html = source_content.strip().startswith(("<!DOCTYPE html>", "<html"))
+    if is_html:
+        html_content = source_content
+    else:
+        # Convert Markdown to HTML for the parser
+        import markdown
+        html_content = markdown.markdown(source_content, extensions=["extra", "nl2br", "sane_lists", "smarty"])
 
     try:
         from bs4 import BeautifulSoup
@@ -845,10 +874,11 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
 
     # Run the AI agent
     try:
+        # Prepare regeneration prompt
+        compressed_resume = minify_text(job.source_resume.content)
         prompt = get_regeneration_prompt(
-            resume_content=job.source_resume.content,
+            resume_content=compressed_resume,
             job_description=job.original_jd,
-            current_tailored=job.resume,
             current_cover=job.cover_letter,
             user_request=request.prompt or "Update the cover letter as requested.",
             company=job.company,
@@ -861,13 +891,9 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
 
         if data:
             # Update job in DB
-            # Note: We still get resume_html back but our prompt tells it to keep it the same
-            new_resume = getattr(data, "resume_html", None)
             new_cover = getattr(data, "cover_letter_html", None)
             new_score = getattr(data, "match_score", None)
 
-            if new_resume is not None:
-                job.resume = str(new_resume)
             if new_cover is not None:
                 job.cover_letter = str(new_cover)
             if new_score is not None:
@@ -875,6 +901,11 @@ async def regenerate_job_content(job_id: int, request: RegenerateRequest, db: Se
                     job.match_score = int(new_score)
                 except (ValueError, TypeError):
                     pass
+            
+            # Fix: Ensure resume is restored to original content if previously empty
+            # Also ensures it's in Markdown format for the new UI
+            if not job.resume or job.resume.strip() == "":
+                job.resume = job.source_resume.content
 
             db.commit()
             db.refresh(job)

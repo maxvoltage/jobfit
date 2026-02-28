@@ -414,7 +414,11 @@ export default function JobDetail() {
 function MarkdownPreview({ content }: { content: string }) {
   const { resolvedTheme } = useTheme();
   // Check if content is HTML
-  const isHtml = content.trim().startsWith('<!DOCTYPE html>') || content.trim().startsWith('<html');
+  const trimmed = content.trim();
+  const isHtml = trimmed.startsWith('<!DOCTYPE html>') ||
+    trimmed.startsWith('<html') ||
+    trimmed.startsWith('<head') ||
+    trimmed.startsWith('<body');
 
   if (isHtml) {
     let finalContent = content;

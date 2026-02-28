@@ -31,7 +31,7 @@ This document describes the client-side validation logic to ensure data integrit
 
 ## 4. Job Detail Editing
 *   **Case: Edit Mode Validation**
-    *   **Logic:** Users can edit the tailored resume and cover letter content using a rich-text editor (Tiptap). The editor extracts the `<body>` content from the HTML for editing and re-wraps it with the original HTML structure (including CSS) when saving.
+    *   **Logic:** Users can edit the resume and cover letter content using a rich-text editor (Tiptap). The editor extracts the `<body>` content from the HTML for editing and re-wraps it with the original HTML structure (including CSS) when saving.
     *   **Error Message:** `"Failed to save changes"` (Toast on API error)
 
 *   **Case: Content Preservation**

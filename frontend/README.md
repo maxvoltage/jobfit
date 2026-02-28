@@ -16,7 +16,7 @@ The user interface for JobFit, built for speed and clarity.
 
 ## Features
 - **Resume Management**: Upload and preview PDF resumes.
-- **Job Analysis**: Link a job posting or paste a description to generate tailored content.
-- **History**: Track your applications and download tailored PDFs.
+- **Job Analysis**: Link a job posting or paste a description to generate content.
+- **History**: Track your applications and download PDFs.
 
 This frontend was initially sparked by [Lovable](https://lovable.dev), providing a solid foundation for rapid development.

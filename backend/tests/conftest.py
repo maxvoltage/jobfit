@@ -150,7 +150,7 @@ def sample_job(db_session: Session, sample_resume):
         company="Test Company",
         title="Software Engineer",
         original_jd="Job description here",
-        resume="<h1>Tailored Resume</h1>",
+        resume="<h1>Resume</h1>",
         cover_letter="<p>Cover Letter Content</p>",
         match_score=85,
         status=JobStatus.todo,

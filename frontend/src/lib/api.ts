@@ -59,10 +59,6 @@ export async function getApplication(id: string): Promise<JobApplication | undef
 export async function updateApplication(id: string, updates: Partial<JobApplication>): Promise<JobApplication | undefined> {
   // Map frontend camelCase to backend snake_case
   const backendUpdates: Record<string, unknown> = { ...updates as Record<string, unknown> };
-  if (updates.resume !== undefined) {
-    backendUpdates.resume = updates.resume;
-    delete (backendUpdates as any).resume;
-  }
   if (updates.coverLetter !== undefined) {
     backendUpdates.cover_letter = updates.coverLetter;
     delete backendUpdates.coverLetter;

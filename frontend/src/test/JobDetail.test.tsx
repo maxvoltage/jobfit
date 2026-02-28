@@ -158,14 +158,14 @@ describe('JobDetail Page', () => {
         await waitFor(() => screen.getByText('Test Company'));
 
         // Initially on resume tab
-        expect(screen.getByRole('tab', { name: /tailored resume/i })).toHaveAttribute('data-state', 'active');
+        expect(screen.getByRole('tab', { name: /resume/i })).toHaveAttribute('data-state', 'active');
 
         // Click cover letter tab
         const coverTab = screen.getByRole('tab', { name: /cover letter/i });
         await user.click(coverTab);
 
         expect(coverTab).toHaveAttribute('data-state', 'active');
-        expect(screen.getByRole('tab', { name: /tailored resume/i })).toHaveAttribute('data-state', 'inactive');
+        expect(screen.getByRole('tab', { name: /resume/i })).toHaveAttribute('data-state', 'inactive');
     });
 
     it('should handle content regeneration', async () => {

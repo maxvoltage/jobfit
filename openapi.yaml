@@ -46,7 +46,7 @@ components:
         jobDescription:
           type: string
           example: "We're looking for a Senior Frontend Engineer..."
-        tailoredResume:
+        resume:
           type: string
           example: "# John Doe\n**Senior Frontend Engineer**..."
         coverLetter:
@@ -82,7 +82,7 @@ components:
         - company
         - title
         - score
-        - tailored_resume
+        - resume
       properties:
         job_id:
           type: integer
@@ -92,7 +92,7 @@ components:
           type: string
         score:
           type: integer
-        tailored_resume:
+        resume:
           type: string
         cover_letter:
           type: string
@@ -301,7 +301,7 @@ paths:
 
   /jobs/{id}/pdf:
     get:
-      summary: Download tailored resume or cover letter as PDF
+      summary: Download resume or cover letter as PDF
       parameters:
         - name: id
           in: path
@@ -325,7 +325,7 @@ paths:
 
   /jobs/{id}/regenerate:
     post:
-      summary: Regenerate tailored content with custom prompt
+      summary: Regenerate content with custom prompt
       parameters:
         - name: id
           in: path

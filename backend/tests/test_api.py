@@ -153,7 +153,7 @@ class TestAnalyzeJob:
         mock_result = MagicMock()
         mock_result.output = ResumeMatchResult(
             match_score=85,
-            resume_html="<h1>Tailored Resume</h1><p>This is a long enough tailored resume content...</p>",
+            resume_html="<h1>Resume</h1><p>This is a long enough resume content...</p>",
             cover_letter_html="<p>Cover letter content that is also long enough...</p>",
             company_name="Test Company",
             job_title="Software Engineer",
@@ -355,7 +355,7 @@ class TestRegenerateJob:
         mock_result = MagicMock()
         mock_result.output = ResumeMatchResult(
             match_score=95,
-            resume_html="<h1>Updated Tailored Resume</h1>",
+            resume_html="<h1>Updated Resume</h1>",
             cover_letter_html="<p>Updated Cover letter</p>",
             company_name="Test Company",
             job_title="Software Engineer",
@@ -371,7 +371,7 @@ class TestRegenerateJob:
 
             assert response.status_code == 200
             data = response.json()
-            assert data["resume"] == "<h1>Updated Tailored Resume</h1>"
+            assert data["resume"] == "<h1>Updated Resume</h1>"
             assert data["coverLetter"] == "<p>Updated Cover letter</p>"
             assert data["matchScore"] == 95
 
@@ -550,7 +550,7 @@ class TestDOCXGeneration:
         assert response.status_code == 404
 
     def test_generate_job_docx_success(self, client, sample_job):
-        """Test successful DOCX generation for a tailored job resume."""
+        """Test successful DOCX generation for a job resume."""
         with patch("main.Document") as mock_doc:
             mock_instance = MagicMock()
             mock_doc.return_value = mock_instance

@@ -102,7 +102,7 @@ JobFit is a full-stack web application with a React frontend and FastAPI backend
 
 #### Database Schema
 - **Resume Table**: Stores user resumes (PDF text, metadata)
-- **Job Table**: Stores job applications (company, title, tailored content, match score)
+- **Job Table**: Stores job applications (company, title, content, match score)
 
 #### API Endpoints
 - `POST /api/resumes/upload`: Upload PDF resume
