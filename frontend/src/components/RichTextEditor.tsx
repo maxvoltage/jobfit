@@ -230,7 +230,7 @@ export function RichTextEditor({ content, onChange, className }: RichTextEditorP
         editorProps: {
             attributes: {
                 class: cn(
-                    "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[400px] p-6 font-sans",
+                    "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[300px] p-6 pb-24 font-sans scroll-mt-10",
                     className
                 ),
             },
@@ -239,9 +239,9 @@ export function RichTextEditor({ content, onChange, className }: RichTextEditorP
     });
 
     return (
-        <div className="flex flex-col border rounded-lg overflow-hidden bg-background">
+        <div className="flex flex-col border rounded-lg bg-background">
             <EditorToolbar editor={editor} />
-            <div className="overflow-y-auto max-h-[600px]">
+            <div className="p-0">
                 <EditorContent editor={editor} />
             </div>
         </div>

@@ -85,7 +85,7 @@ export function ResumeEditor({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl h-[85vh] p-0">
+            <DialogContent className="max-w-5xl h-[85vh] p-0 flex flex-col">
                 <DialogHeader className="px-6 pt-6 pb-4 border-b">
                     <DialogTitle>Edit Resume: {resume.name}</DialogTitle>
                     <DialogDescription>
@@ -93,8 +93,8 @@ export function ResumeEditor({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-hidden p-6">
-                    <Tabs value={editTab} onValueChange={(v) => setEditTab(v as 'edit' | 'preview')} className="h-full flex flex-col">
+                <div className="flex-1 overflow-hidden p-6 flex flex-col">
+                    <Tabs value={editTab} onValueChange={(v) => setEditTab(v as 'edit' | 'preview')} className="flex-1 flex flex-col h-full">
                         <TabsList className="grid w-full max-w-md grid-cols-2">
                             <TabsTrigger value="edit" className="gap-2">
                                 <Edit2 className="h-3 w-3" />
@@ -106,17 +106,17 @@ export function ResumeEditor({
                             </TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="edit" className="flex-1 mt-3">
+                        <TabsContent value="edit" className="flex-1 mt-3 overflow-hidden">
                             <Textarea
                                 value={editedContent}
                                 onChange={(e) => setEditedContent(e.target.value)}
-                                className="h-[calc(85vh-240px)] font-mono text-sm resize-none"
+                                className="h-full font-mono text-sm resize-none"
                                 placeholder="Enter resume content in Markdown format..."
                             />
                         </TabsContent>
 
-                        <TabsContent value="preview" className="flex-1 mt-3 overflow-auto">
-                            <div className="h-[calc(85vh-240px)] p-4 rounded-lg border bg-background overflow-auto">
+                        <TabsContent value="preview" className="flex-1 mt-3 overflow-hidden">
+                            <div className="h-full p-4 rounded-lg border bg-background overflow-auto pb-10">
                                 <div className="prose prose-sm max-w-none dark:prose-invert">
                                     <ReactMarkdown
                                         components={{

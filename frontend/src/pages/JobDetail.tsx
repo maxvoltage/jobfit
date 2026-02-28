@@ -372,7 +372,7 @@ export default function JobDetail() {
             </TabsList>
 
             <TabsContent value="resume" className="mt-0">
-              <div className="max-h-[600px] overflow-y-auto pr-2">
+              <div className={cn("pr-2", !isEditing && "max-h-[600px] overflow-y-auto")}>
                 {isEditing ? (
                   <RichTextEditor
                     content={editedResume}
@@ -389,7 +389,7 @@ export default function JobDetail() {
             </TabsContent>
 
             <TabsContent value="cover" className="mt-0">
-              <div className="max-h-[600px] overflow-y-auto pr-2">
+              <div className={cn("pr-2", !isEditing && "max-h-[600px] overflow-y-auto")}>
                 {isEditing ? (
                   <RichTextEditor
                     content={editedCover}

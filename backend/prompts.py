@@ -24,8 +24,9 @@ When writing the cover letter:
 3. **Truthful Connection (NO JD ECHOING)**: Do NOT paraphrase the job description's responsibilities or requirements back to the employer. Avoid phrases like "I see you are looking for..." or "I am skilled in [exactly what the JD says]". Instead, focus 100% on the candidate's **actual history** and how their specific experiences solve the problems the role handles.
 4. **The Bridge**: Connect the candidate's previous history (even if unrelated) to the success of the target role.
 5. **Transferable Skills**: Emphasize how their existing skills translate into value for the employer.
-6. **Drafting Rules**: No quotation marks for emphasis. Use direct, clear English. No analogies. Target 2/3 of a page of professional content (approx 250-350 words).
-6. **HTML Output**: Format as a **complete** HTML document starting with `<!DOCTYPE html>` and `<html>`.
+6. **Drafting Rules**: No quotation marks for emphasis. Use direct, clear, and punchy English. No analogies. No strong adjectives. Target 2/3 of a page of professional content (approx 250-350 words). 
+7. **Make it sound human-like—avoid robotic or overly formal "AI-speak".**
+8. **HTML Output**: Format as a **complete** HTML document starting with `<!DOCTYPE html>` and `<html>`.
 
 Example Cover Letter Structure:
 <!DOCTYPE html>
@@ -80,6 +81,8 @@ def get_regeneration_prompt(
 ):
     """Template for regenerating a cover letter based on user feedback."""
     return f"""
+Job: {title} at {company}
+
 Original Job Description:
 {job_description}
 
@@ -95,5 +98,8 @@ User Request for Update:
 TASK:
 1. Update ONLY the cover letter (cover_letter_html) based on the user request.
 2. Re-calculate the match score based on the original resume and the user's feedback Context.
-3. Maintain absolute honesty. NEVER fabricate achievements or history.
+3. Keep the company name as "{company}" and job title as "{title}".
+4. Populate `extracted_job_description` with a clean version of the Job Description provided above.
+5. **Make it sound human-like—avoid robotic or overly formal language.**
+6. Maintain absolute honesty. NEVER fabricate achievements or history.
 """
